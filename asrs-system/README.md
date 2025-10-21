@@ -572,68 +572,24 @@ For support and questions:
 · 🐛 Issues: GitHub Issues
 · 📚 Documentation: Wiki
 
-🗺 TODO Roadmap
+🗺 Roadmap
 
-## Phase 1 (Current)
+Phase 1 (Current)
 
-### Database Setup
-- [ ] Install Prisma and PostgreSQL dependencies
-- [ ] Create Prisma schema with all entities (Warehouse, Zone, Aisle, Rack, Bin, Item, BinItem, Movement, Supplier, Shipment, User)
-- [ ] Set up database connection and environment variables
-- [ ] Generate Prisma client
+· Basic inventory management
+· Storage location management
+· Simple putaway and picking
 
-### TypeScript Types
-- [ ] Create type definitions for all entities (item.ts, location.ts, movement.ts, etc.)
-- [ ] Define API request/response types
-- [ ] Create utility types for common operations
+Phase 2 (Next)
 
-### Database Configuration
-- [ ] Set up lib/db.ts for database connection
-- [ ] Configure authentication utilities in lib/auth.ts
-- [ ] Add common utilities in lib/utils.ts
+· Barcode/RFID integration
+· Mobile app for warehouse operations
+· Advanced analytics dashboard
+· Supplier portal
 
-### API Routes Implementation
-- [ ] Implement /api/items routes (GET, POST, PUT, DELETE)
-- [ ] Implement /api/locations routes for storage management
-- [ ] Implement /api/transactions routes for movements
-- [ ] Implement /api/putaway route for smart putaway algorithm
-- [ ] Implement /api/picking route for optimized pick lists
-- [ ] Implement /api/analytics/inventory route for analytics
-- [ ] Implement /api/shipments routes for shipment management
+Phase 3 (Future)
 
-### Business Logic
-- [ ] Implement putaway algorithms (AI-powered storage optimization)
-- [ ] Implement picking optimization (route-optimized algorithms)
-- [ ] Add inventory management logic
-- [ ] Implement analytics engine for KPIs and reports
-
-### Authentication & Security
-- [ ] Set up NextAuth.js for authentication
-- [ ] Implement role-based access control
-- [ ] Add API rate limiting
-- [ ] Implement data validation and sanitization
-
-### Testing
-- [ ] Write unit tests for API routes
-- [ ] Test database operations
-- [ ] Integration testing for business logic
-- [ ] End-to-end testing for critical flows
-
-### Documentation
-- [ ] Update API documentation
-- [ ] Add inline code comments
-- [ ] Create usage examples
-
-## Phase 2 (Next)
-
-- [ ] Barcode/RFID integration
-- [ ] Mobile app for warehouse operations
-- [ ] Advanced analytics dashboard
-- [ ] Supplier portal
-
-## Phase 3 (Future)
-
-- [ ] IoT sensor integration
-- [ ] Machine learning for demand forecasting
-- [ ] Robotic integration APIs
-- [ ] Multi-language support
+· IoT sensor integration
+· Machine learning for demand forecasting
+· Robotic integration APIs
+· Multi-language support
