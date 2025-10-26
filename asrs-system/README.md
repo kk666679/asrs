@@ -3,9 +3,13 @@
 A full-stack Next.js application for managing warehouse operations with automated storage and retrieval capabilities. This enterprise-grade system provides comprehensive inventory management, optimized picking algorithms, and real-time analytics.
 
 https://img.shields.io/badge/ASRS-Warehouse%20Management-blue
-https://img.shields.io/badge/Next.js-14-black
-https://img.shields.io/badge/Prisma-ORM-green
+https://img.shields.io/badge/Next.js-15.5.6-black
+https://img.shields.io/badge/React-19.1.0-blue
+https://img.shields.io/badge/TypeScript-5.x-blue
+https://img.shields.io/badge/Prisma-6.17.1-green
 https://img.shields.io/badge/PostgreSQL-Database-blue
+https://img.shields.io/badge/Node.js-18+-green
+https://img.shields.io/badge/License-MIT-yellow
 
 🏗 System Architecture
 
