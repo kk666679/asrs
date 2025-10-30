@@ -1,0 +1,510 @@
+ // This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Warehouse Management System Schema
+
+enum Temperature {
+  AMBIENT
+  REFRIGERATED
+  FROZEN
+}
+
+enum SecurityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  RESTRICTED
+}
+
+enum HazardLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum BinStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DAMAGED
+}
+
+enum MovementType {
+  PUTAWAY
+  PICKING
+  TRANSFER
+  ADJUSTMENT
+  COUNT
+}
+
+enum MovementStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ShipmentType {
+  INBOUND
+  OUTBOUND
+  TRANSFER
+}
+
+enum ShipmentStatus {
+  PLANNED
+  IN_TRANSIT
+  RECEIVED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum RackOrientation {
+  FRONT
+  BACK
+  SIDE
+}
+
+enum SensorType {
+  TEMPERATURE
+  HUMIDITY
+  WEIGHT
+  PRESSURE
+  MOTION
+  LIGHT
+  VIBRATION
+}
+
+enum SensorStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  FAULTY
+}
+
+enum RobotType {
+  STORAGE_RETRIEVAL
+  CONVEYOR
+  SORTING
+  PACKING
+  TRANSPORT
+}
+
+enum RobotStatus {
+  IDLE
+  WORKING
+  MAINTENANCE
+  ERROR
+  OFFLINE
+}
+
+enum CommandType {
+  MOVE
+  PICK
+  PLACE
+  SCAN
+  CALIBRATE
+  EMERGENCY_STOP
+}
+
+enum CommandStatus {
+  PENDING
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Core Entities
+
+model Warehouse {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  zones       Zone[]
+  users       User[]
+  shipments   Shipment[]
+
+  @@map("warehouses")
+}
+
+model Zone {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  name          String
+  temperature   Temperature
+  securityLevel SecurityLevel
+  warehouseId   String
+
+  warehouse     Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  aisles        Aisle[]
+  sensors       Sensor[]
+  robots        Robot[]
+
+  @@map("zones")
+}
+
+model Aisle {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  number      Int
+  width       Float
+  height      Float
+  zoneId      String
+
+  zone        Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  racks       Rack[]
+
+  @@map("aisles")
+}
+
+model Rack {
+  id          String          @id @default(cuid())
+  code        String          @unique
+  level       Int
+  orientation RackOrientation
+  aisleId     String
+
+  aisle       Aisle    @relation(fields: [aisleId], references: [id], onDelete: Cascade)
+  bins        Bin[]
+
+  @@map("racks")
+}
+
+model Bin {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  capacity    Int
+  currentLoad Int       @default(0)
+  weightLimit Float
+  status      BinStatus @default(ACTIVE)
+  barcode     String?    @unique
+  rackId      String
+
+  rack        Rack       @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  binItems    BinItem[]
+  fromMovements Movement[] @relation("MovementFromBin")
+  toMovements   Movement[] @relation("MovementToBin")
+  sensors     Sensor[]
+
+  @@map("bins")
+}
+
+model Item {
+  id          String       @id @default(cuid())
+  sku         String       @unique
+  name        String
+  category    String
+  weight      Float
+  hazardLevel HazardLevel @default(NONE)
+  temperature Temperature @default(AMBIENT)
+  minStock    Int         @default(0)
+  maxStock    Int?
+  barcode     String?      @unique
+  supplierId  String
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  binItems    BinItem[]
+  shipmentItems ShipmentItem[]
+
+  @@map("items")
+}
+
+model BinItem {
+  id          String   @id @default(cuid())
+  quantity    Int
+  batchNumber String?
+  expiryDate  DateTime?
+  binId       String
+  itemId      String
+
+  bin         Bin      @relation(fields: [binId], references: [id], onDelete: Cascade)
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  movements   Movement[]
+
+  @@unique([binId, itemId, batchNumber])
+  @@map("bin_items")
+}
+
+model Movement {
+  id          String         @id @default(cuid())
+  type        MovementType
+  quantity    Int
+  status      MovementStatus @default(PENDING)
+  priority    Priority       @default(MEDIUM)
+  timestamp   DateTime       @default(now())
+  binItemId   String
+  fromBinId   String?
+  toBinId     String?
+  userId      String
+
+  binItem     BinItem @relation(fields: [binItemId], references: [id], onDelete: Cascade)
+  fromBin     Bin?    @relation("MovementFromBin", fields: [fromBinId], references: [id])
+  toBin       Bin?    @relation("MovementToBin", fields: [toBinId], references: [id])
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("movements")
+}
+
+model Supplier {
+  id      String         @id @default(cuid())
+  code    String         @unique
+  name    String
+  contact String?
+  email   String?
+  status  SupplierStatus @default(ACTIVE)
+
+  items       Item[]
+  shipments   Shipment[]
+  ingredients Ingredient[]
+
+  @@map("suppliers")
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  shipmentNumber    String         @unique
+  type              ShipmentType
+  status            ShipmentStatus @default(PLANNED)
+  expectedArrival   DateTime?
+  actualArrival     DateTime?
+  barcode           String?        @unique
+  warehouseId       String
+  supplierId        String
+
+  warehouse         Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  supplier          Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  shipmentItems     ShipmentItem[]
+
+  @@map("shipments")
+}
+
+model ShipmentItem {
+  id         String @id @default(cuid())
+  quantity   Int
+  received   Int    @default(0)
+  shipmentId String
+  itemId     String
+
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_items")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String
+  role      UserRole   @default(OPERATOR)
+  status    UserStatus @default(ACTIVE)
+  warehouseId String
+
+  warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  movements Movement[]
+  robotCommands RobotCommand[]
+
+  @@map("users")
+}
+
+// IoT Sensor Integration
+
+model Sensor {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  type        SensorType
+  status      SensorStatus @default(ACTIVE)
+  location    String?      // Physical location description
+  binId       String?
+  zoneId      String?
+  calibrationDate DateTime?
+  lastMaintenance DateTime?
+  thresholdMin Float?
+  thresholdMax Float?
+
+  bin         Bin?         @relation(fields: [binId], references: [id])
+  zone        Zone?        @relation(fields: [zoneId], references: [id])
+  readings    SensorReading[]
+
+  @@map("sensors")
+}
+
+model SensorReading {
+  id        String   @id @default(cuid())
+  sensorId  String
+  value     Float
+  unit      String   // e.g., "Celsius", "kg", "%"
+  timestamp DateTime @default(now())
+  quality   Int      @default(100) // Data quality percentage
+
+  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, timestamp])
+  @@map("sensor_readings")
+}
+
+// Robotic Integration
+
+model Robot {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String
+  type          RobotType
+  status        RobotStatus @default(IDLE)
+  location      String?     // Current physical location
+  batteryLevel  Float?      // Battery percentage
+  lastMaintenance DateTime?
+  zoneId        String
+
+  zone          Zone        @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  commands      RobotCommand[]
+
+  @@map("robots")
+}
+
+model RobotCommand {
+  id          String        @id @default(cuid())
+  robotId     String
+  type        CommandType
+  status      CommandStatus @default(PENDING)
+  parameters  Json?         // Command-specific parameters
+  priority    Priority      @default(MEDIUM)
+  createdAt   DateTime      @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  errorMessage String?
+  userId      String
+
+  robot       Robot         @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("robot_commands")
+}
+
+// Halal Product Management System Extensions
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  description String?
+  category    String
+  weight      Float
+  dimensions  String   // e.g., "10x20x30 cm"
+  manufacturerId String
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  certifications ProductCertification[]
+  ingredients    Ingredient[]
+  warehouseStorages WarehouseStorage[]
+
+  @@map("products")
+}
+
+model Manufacturer {
+  id             String   @id @default(cuid())
+  name           String
+  companyDetails String?
+  contactInfo    String   // e.g., phone, email, address
+
+  products       Product[]
+
+  @@map("manufacturers")
+}
+
+model HalalCertificationBody {
+  id               String   @id @default(cuid())
+  name             String
+  licenseNumber    String   @unique
+  validityPeriodStart DateTime
+  validityPeriodEnd   DateTime
+
+  productCertifications ProductCertification[]
+  ingredientCertifications Ingredient[]
+
+  @@map("halal_certification_bodies")
+}
+
+model ProductCertification {
+  id                   String   @id @default(cuid())
+  productId            String
+  certificationBodyId  String
+  issueDate            DateTime
+  expiryDate           DateTime
+
+  product             Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  certificationBody   HalalCertificationBody @relation(fields: [certificationBodyId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, certificationBodyId, issueDate])
+  @@map("product_certifications")
+}
+
+model Ingredient {
+  id                   String   @id @default(cuid())
+  name                 String
+  description          String?
+  supplierId           String
+  certificationId      String   // FK to HalalCertificationBody
+  productId            String
+
+  supplier             Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  certificationBody    HalalCertificationBody @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  product              Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("ingredients")
+}
+
+model WarehouseStorage {
+  id                     String   @id @default(cuid())
+  productId              String
+  location               String   // e.g., ASRS bin ID
+  quantityOnHand         Int
+  batchLotNumber         String?
+  certificationExpiryCheck Boolean @default(true)  // Enforce expiry check
+
+  product                Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("warehouse_storages")
+}

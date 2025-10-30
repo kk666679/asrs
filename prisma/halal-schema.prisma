@@ -1,0 +1,355 @@
+// Enhanced Halal Product Management System Schema
+// Comprehensive business logic for real-world Halal industry operations
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Halal Business Enums
+enum HalalProductCategory {
+  MEAT
+  POULTRY
+  SEAFOOD
+  DAIRY
+  BEVERAGES
+  SNACKS
+  COSMETICS
+  PHARMACEUTICALS
+  SUPPLEMENTS
+  PROCESSED_FOOD
+}
+
+enum CertificationStatus {
+  VALID
+  EXPIRED
+  PENDING_RENEWAL
+  SUSPENDED
+  REVOKED
+}
+
+enum ComplianceLevel {
+  FULLY_COMPLIANT
+  MINOR_ISSUES
+  MAJOR_ISSUES
+  NON_COMPLIANT
+}
+
+enum MarketRegion {
+  MIDDLE_EAST
+  SOUTHEAST_ASIA
+  EUROPE
+  NORTH_AMERICA
+  AFRICA
+  SOUTH_ASIA
+  OCEANIA
+}
+
+enum SeasonalDemand {
+  RAMADAN_HIGH
+  EID_PEAK
+  HAJJ_SEASON
+  REGULAR
+  LOW_SEASON
+}
+
+// Core Halal Product Model
+model HalalProduct {
+  id                    String                @id @default(cuid())
+  sku                   String                @unique
+  name                  String
+  description           String?
+  category              HalalProductCategory
+  subcategory           String?
+  weight                Float
+  dimensions            String
+  sourceCountry         String
+  manufacturerId        String
+  halalComplianceScore  Float                 @default(0) // 0-100 score
+  isHalalCertified      Boolean               @default(false)
+  certificationStatus   CertificationStatus   @default(PENDING_RENEWAL)
+  lastAuditDate         DateTime?
+  nextAuditDue          DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  manufacturer          HalalManufacturer     @relation(fields: [manufacturerId], references: [id])
+  certifications        HalalCertification[]
+  ingredients           HalalIngredient[]
+  inventory             HalalInventory[]
+  sales                 HalalSales[]
+  complianceChecks      ComplianceCheck[]
+  marketData            MarketData[]
+
+  @@map("halal_products")
+}
+
+model HalalManufacturer {
+  id                    String                @id @default(cuid())
+  name                  String
+  country               String
+  region                MarketRegion
+  contactInfo           String
+  halalCertificationId  String?
+  complianceLevel       ComplianceLevel       @default(FULLY_COMPLIANT)
+  reliabilityScore      Float                 @default(85) // 0-100
+  averageLeadTime       Int                   @default(14) // days
+  certificationRenewalRate Float              @default(95) // percentage
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  products              HalalProduct[]
+  certificationBody     HalalCertificationBody? @relation(fields: [halalCertificationId], references: [id])
+  auditHistory          ManufacturerAudit[]
+
+  @@map("halal_manufacturers")
+}
+
+model HalalCertificationBody {
+  id                    String                @id @default(cuid())
+  name                  String
+  country               String
+  licenseNumber         String                @unique
+  accreditationLevel    String                // International, National, Regional
+  validityStart         DateTime
+  validityEnd           DateTime
+  performanceScore      Float                 @default(90) // 0-100
+  processingTime        Int                   @default(30) // average days
+  renewalRate           Float                 @default(88) // percentage
+  createdAt             DateTime              @default(now())
+
+  certifications        HalalCertification[]
+  manufacturers         HalalManufacturer[]
+  auditReports          AuditReport[]
+  ingredients           HalalIngredient[]
+
+  @@map("halal_certification_bodies")
+}
+
+model HalalCertification {
+  id                    String                @id @default(cuid())
+  certificateNumber     String                @unique
+  productId             String
+  certificationBodyId   String
+  issueDate             DateTime
+  expiryDate            DateTime
+  status                CertificationStatus   @default(VALID)
+  renewalNotified       Boolean               @default(false)
+  complianceScore       Float                 @default(95)
+  auditFrequency        Int                   @default(12) // months
+  lastRenewalDate       DateTime?
+  createdAt             DateTime              @default(now())
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+  certificationBody     HalalCertificationBody @relation(fields: [certificationBodyId], references: [id])
+  renewalHistory        CertificationRenewal[]
+
+  @@unique([productId, certificationBodyId])
+  @@map("halal_certifications")
+}
+
+model HalalIngredient {
+  id                    String                @id @default(cuid())
+  name                  String
+  type                  String                // Animal, Plant, Synthetic, etc.
+  sourceCountry         String
+  isHalalCertified      Boolean               @default(false)
+  certificationBodyId   String?
+  productId             String
+  complianceLevel       ComplianceLevel       @default(FULLY_COMPLIANT)
+  riskLevel             String                @default("LOW") // LOW, MEDIUM, HIGH
+  lastVerified          DateTime?
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+  certificationBody     HalalCertificationBody? @relation(fields: [certificationBodyId], references: [id])
+
+  @@map("halal_ingredients")
+}
+
+model HalalInventory {
+  id                    String                @id @default(cuid())
+  productId             String
+  warehouseLocation     String
+  region                MarketRegion
+  quantityOnHand        Int
+  reservedQuantity      Int                   @default(0)
+  reorderPoint          Int
+  maxStock              Int
+  batchNumber           String?
+  expiryDate            DateTime?
+  certificationExpiry   DateTime?
+  complianceVerified    Boolean               @default(false)
+  lastStockCheck        DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+  movements             InventoryMovement[]
+
+  @@map("halal_inventory")
+}
+
+model HalalSales {
+  id                    String                @id @default(cuid())
+  productId             String
+  region                MarketRegion
+  quantity              Int
+  revenue               Float
+  unitPrice             Float
+  customerSegment       String                // B2B, B2C, Retail, Wholesale
+  seasonalFactor        SeasonalDemand
+  saleDate              DateTime
+  month                 Int
+  year                  Int
+  createdAt             DateTime              @default(now())
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+
+  @@index([productId, region, saleDate])
+  @@map("halal_sales")
+}
+
+model MarketData {
+  id                    String                @id @default(cuid())
+  productId             String
+  region                MarketRegion
+  demandIndex           Float                 // 0-100
+  marketShare           Float                 // percentage
+  competitorCount       Int
+  averagePrice          Float
+  seasonalMultiplier    Float                 @default(1.0)
+  growthRate            Float                 // percentage
+  consumerTrend         String                // Growing, Stable, Declining
+  recordDate            DateTime
+  createdAt             DateTime              @default(now())
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+
+  @@index([productId, region, recordDate])
+  @@map("market_data")
+}
+
+model ComplianceCheck {
+  id                    String                @id @default(cuid())
+  productId             String
+  checkType             String                // Ingredient, Process, Certification, Storage
+  status                ComplianceLevel
+  findings              String?
+  correctiveActions     String?
+  checkDate             DateTime
+  nextCheckDue          DateTime?
+  auditorName           String?
+  severity              String                @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  resolved              Boolean               @default(false)
+  createdAt             DateTime              @default(now())
+
+  product               HalalProduct          @relation(fields: [productId], references: [id])
+
+  @@map("compliance_checks")
+}
+
+model CertificationRenewal {
+  id                    String                @id @default(cuid())
+  certificationId       String
+  renewalDate           DateTime
+  previousExpiryDate    DateTime
+  newExpiryDate         DateTime
+  processingTime        Int                   // days
+  cost                  Float
+  status                String                // Completed, Pending, Delayed
+  notes                 String?
+  createdAt             DateTime              @default(now())
+
+  certification         HalalCertification    @relation(fields: [certificationId], references: [id])
+
+  @@map("certification_renewals")
+}
+
+model ManufacturerAudit {
+  id                    String                @id @default(cuid())
+  manufacturerId        String
+  auditDate             DateTime
+  auditType             String                // Annual, Surprise, Complaint-based
+  overallScore          Float                 // 0-100
+  complianceLevel       ComplianceLevel
+  findings              String?
+  recommendations       String?
+  followUpRequired      Boolean               @default(false)
+  followUpDate          DateTime?
+  auditorName           String
+  createdAt             DateTime              @default(now())
+
+  manufacturer          HalalManufacturer     @relation(fields: [manufacturerId], references: [id])
+
+  @@map("manufacturer_audits")
+}
+
+model AuditReport {
+  id                    String                @id @default(cuid())
+  certificationBodyId   String
+  reportDate            DateTime
+  totalAudits           Int
+  passRate              Float                 // percentage
+  averageScore          Float
+  issuesIdentified      Int
+  correctiveActions     Int
+  reportPeriod          String                // Monthly, Quarterly, Annual
+  createdAt             DateTime              @default(now())
+
+  certificationBody     HalalCertificationBody @relation(fields: [certificationBodyId], references: [id])
+
+  @@map("audit_reports")
+}
+
+model InventoryMovement {
+  id                    String                @id @default(cuid())
+  inventoryId           String
+  movementType          String                // IN, OUT, TRANSFER, ADJUSTMENT
+  quantity              Int
+  reason                String?
+  batchNumber           String?
+  movementDate          DateTime
+  userId                String?
+  notes                 String?
+  createdAt             DateTime              @default(now())
+
+  inventory             HalalInventory        @relation(fields: [inventoryId], references: [id])
+
+  @@map("inventory_movements")
+}
+
+// Business Intelligence and Simulation Models
+model BusinessMetrics {
+  id                    String                @id @default(cuid())
+  metricName            String
+  metricValue           Float
+  metricUnit            String
+  category              String                // Compliance, Sales, Inventory, Market
+  region                MarketRegion?
+  calculationDate       DateTime
+  period                String                // Daily, Weekly, Monthly, Quarterly
+  createdAt             DateTime              @default(now())
+
+  @@index([metricName, calculationDate])
+  @@map("business_metrics")
+}
+
+model SimulationScenario {
+  id                    String                @id @default(cuid())
+  scenarioName          String
+  description           String?
+  parameters            Json                  // Flexible parameters for different scenarios
+  baselineMetrics       Json                  // Starting metrics
+  projectedOutcome      Json                  // Expected results
+  actualOutcome         Json?                 // Real results if executed
+  status                String                @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
+  createdBy             String
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@map("simulation_scenarios")
+}

@@ -1,0 +1,438 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model aisles {
+  id     String  @id
+  code   String  @unique
+  number Int
+  width  Float
+  height Float
+  zoneId String
+  zones  zones   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  racks  racks[]
+}
+
+model bin_items {
+  id          String      @id
+  quantity    Int
+  batchNumber String?
+  expiryDate  DateTime?
+  binId       String
+  itemId      String
+  bins        bins        @relation(fields: [binId], references: [id], onDelete: Cascade)
+  items       items       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  movements   movements[]
+
+  @@unique([binId, itemId, batchNumber])
+}
+
+model bins {
+  id                                  String      @id
+  code                                String      @unique
+  capacity                            Int
+  currentLoad                         Int         @default(0)
+  weightLimit                         Float
+  status                              BinStatus   @default(ACTIVE)
+  barcode                             String?     @unique
+  rackId                              String
+  bin_items                           bin_items[]
+  racks                               racks       @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  movements_movements_fromBinIdTobins movements[] @relation("movements_fromBinIdTobins")
+  movements_movements_toBinIdTobins   movements[] @relation("movements_toBinIdTobins")
+  sensors                             sensors[]
+}
+
+model halal_certification_bodies {
+  id                     String                   @id
+  name                   String
+  licenseNumber          String                   @unique
+  validityPeriodStart    DateTime
+  validityPeriodEnd      DateTime
+  ingredients            ingredients[]
+  product_certifications product_certifications[]
+}
+
+model ingredients {
+  id                         String                     @id
+  name                       String
+  description                String?
+  supplierId                 String
+  certificationId            String
+  productId                  String
+  halal_certification_bodies halal_certification_bodies @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  products                   products                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  suppliers                  suppliers                  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model items {
+  id             String           @id
+  sku            String           @unique
+  name           String
+  category       String
+  weight         Float
+  hazardLevel    HazardLevel      @default(NONE)
+  temperature    Temperature      @default(AMBIENT)
+  minStock       Int              @default(0)
+  maxStock       Int?
+  barcode        String?          @unique
+  supplierId     String
+  bin_items      bin_items[]
+  suppliers      suppliers        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  shipment_items shipment_items[]
+}
+
+model manufacturers {
+  id             String     @id
+  name           String
+  companyDetails String?
+  contactInfo    String
+  products       products[]
+}
+
+model movements {
+  id                             String         @id
+  type                           MovementType
+  quantity                       Int
+  status                         MovementStatus @default(PENDING)
+  priority                       Priority       @default(MEDIUM)
+  timestamp                      DateTime       @default(now())
+  binItemId                      String
+  fromBinId                      String?
+  toBinId                        String?
+  userId                         String
+  bin_items                      bin_items      @relation(fields: [binItemId], references: [id], onDelete: Cascade)
+  bins_movements_fromBinIdTobins bins?          @relation("movements_fromBinIdTobins", fields: [fromBinId], references: [id])
+  bins_movements_toBinIdTobins   bins?          @relation("movements_toBinIdTobins", fields: [toBinId], references: [id])
+  users                          users          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model product_certifications {
+  id                         String                     @id
+  productId                  String
+  certificationBodyId        String
+  issueDate                  DateTime
+  expiryDate                 DateTime
+  halal_certification_bodies halal_certification_bodies @relation(fields: [certificationBodyId], references: [id], onDelete: Cascade)
+  products                   products                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, certificationBodyId, issueDate])
+}
+
+model products {
+  id                     String                   @id
+  sku                    String                   @unique
+  name                   String
+  description            String?
+  category               String
+  weight                 Float
+  dimensions             String
+  manufacturerId         String
+  ingredients            ingredients[]
+  product_certifications product_certifications[]
+  manufacturers          manufacturers            @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  warehouse_storages     warehouse_storages[]
+}
+
+model racks {
+  id          String          @id
+  code        String          @unique
+  level       Int
+  orientation RackOrientation
+  aisleId     String
+  bins        bins[]
+  aisles      aisles          @relation(fields: [aisleId], references: [id], onDelete: Cascade)
+}
+
+model robot_commands {
+  id           String        @id
+  robotId      String
+  type         CommandType
+  status       CommandStatus @default(PENDING)
+  parameters   Json?
+  priority     Priority      @default(MEDIUM)
+  createdAt    DateTime      @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+  userId       String
+  robots       robots        @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  users        users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model robots {
+  id              String           @id
+  code            String           @unique
+  name            String
+  type            RobotType
+  status          RobotStatus      @default(IDLE)
+  location        String?
+  batteryLevel    Float?
+  lastMaintenance DateTime?
+  zoneId          String
+  robot_commands  robot_commands[]
+  zones           zones            @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+}
+
+model sensor_readings {
+  id        String   @id
+  sensorId  String
+  value     Float
+  unit      String
+  timestamp DateTime @default(now())
+  quality   Int      @default(100)
+  sensors   sensors  @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, timestamp])
+}
+
+model sensors {
+  id              String            @id
+  code            String            @unique
+  name            String
+  type            SensorType
+  status          SensorStatus      @default(ACTIVE)
+  location        String?
+  binId           String?
+  zoneId          String?
+  calibrationDate DateTime?
+  lastMaintenance DateTime?
+  thresholdMin    Float?
+  thresholdMax    Float?
+  sensor_readings sensor_readings[]
+  bins            bins?             @relation(fields: [binId], references: [id])
+  zones           zones?            @relation(fields: [zoneId], references: [id])
+}
+
+model shipment_items {
+  id         String    @id
+  quantity   Int
+  received   Int       @default(0)
+  shipmentId String
+  itemId     String
+  items      items     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  shipments  shipments @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model shipments {
+  id              String           @id
+  shipmentNumber  String           @unique
+  type            ShipmentType
+  status          ShipmentStatus   @default(PLANNED)
+  expectedArrival DateTime?
+  actualArrival   DateTime?
+  barcode         String?          @unique
+  warehouseId     String
+  supplierId      String
+  shipment_items  shipment_items[]
+  suppliers       suppliers        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  warehouses      warehouses       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+}
+
+model suppliers {
+  id          String         @id
+  code        String         @unique
+  name        String
+  contact     String?
+  email       String?
+  status      SupplierStatus @default(ACTIVE)
+  ingredients ingredients[]
+  items       items[]
+  shipments   shipments[]
+}
+
+model users {
+  id             String           @id
+  email          String           @unique
+  name           String
+  password       String
+  role           UserRole         @default(OPERATOR)
+  status         UserStatus       @default(ACTIVE)
+  warehouseId    String
+  mfaEnabled     Boolean          @default(false)
+  mfaSecret      String?
+  backupCodes    String[]         @default([])
+  movements      movements[]
+  robot_commands robot_commands[]
+  warehouses     warehouses       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+}
+
+model warehouse_storages {
+  id                       String   @id
+  productId                String
+  location                 String
+  quantityOnHand           Int
+  batchLotNumber           String?
+  certificationExpiryCheck Boolean  @default(true)
+  products                 products @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model warehouses {
+  id        String      @id
+  code      String      @unique
+  name      String
+  address   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime
+  shipments shipments[]
+  users     users[]
+  zones     zones[]
+}
+
+model zones {
+  id            String        @id
+  code          String        @unique
+  name          String
+  temperature   Temperature
+  securityLevel SecurityLevel
+  warehouseId   String
+  aisles        aisles[]
+  robots        robots[]
+  sensors       sensors[]
+  warehouses    warehouses    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+}
+
+enum BinStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DAMAGED
+}
+
+enum CommandStatus {
+  PENDING
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CommandType {
+  MOVE
+  PICK
+  PLACE
+  SCAN
+  CALIBRATE
+  EMERGENCY_STOP
+}
+
+enum HazardLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum MovementStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum MovementType {
+  PUTAWAY
+  PICKING
+  TRANSFER
+  ADJUSTMENT
+  COUNT
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RackOrientation {
+  FRONT
+  BACK
+  SIDE
+}
+
+enum RobotStatus {
+  IDLE
+  WORKING
+  MAINTENANCE
+  ERROR
+  OFFLINE
+}
+
+enum RobotType {
+  STORAGE_RETRIEVAL
+  CONVEYOR
+  SORTING
+  PACKING
+  TRANSPORT
+}
+
+enum SecurityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  RESTRICTED
+}
+
+enum SensorStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  FAULTY
+}
+
+enum SensorType {
+  TEMPERATURE
+  HUMIDITY
+  WEIGHT
+  PRESSURE
+  MOTION
+  LIGHT
+  VIBRATION
+}
+
+enum ShipmentStatus {
+  PLANNED
+  IN_TRANSIT
+  RECEIVED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum ShipmentType {
+  INBOUND
+  OUTBOUND
+  TRANSFER
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Temperature {
+  AMBIENT
+  REFRIGERATED
+  FROZEN
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
