@@ -44,7 +44,7 @@ export class PerformanceService {
   }
 
   private async calculateThroughput(dateRange: { start: Date; end: Date }) {
-    const movements = await prisma.movements.aggregate({
+    const movements = await prisma.movement.aggregate({
       where: {
         status: 'COMPLETED',
         timestamp: {
@@ -72,7 +72,7 @@ export class PerformanceService {
   private async calculateAccuracy(dateRange: { start: Date; end: Date }) {
     const [totalMovements, completedMovements, failedMovements] =
       await Promise.all([
-        prisma.movements.count({
+        prisma.movement.count({
           where: {
             timestamp: {
               gte: dateRange.start,
@@ -80,7 +80,7 @@ export class PerformanceService {
             },
           },
         }),
-        prisma.movements.count({
+        prisma.movement.count({
           where: {
             status: 'COMPLETED',
             timestamp: {
@@ -89,7 +89,7 @@ export class PerformanceService {
             },
           },
         }),
-        prisma.movements.count({
+        prisma.movement.count({
           where: {
             status: 'FAILED',
             timestamp: {
@@ -115,7 +115,7 @@ export class PerformanceService {
 
   private async calculateEfficiency(dateRange: { start: Date; end: Date }) {
     // Space utilization
-    const bins = await prisma.bins.findMany({
+    const bins = await prisma.bin.findMany({
       select: {
         capacity: true,
         currentLoad: true,
@@ -129,8 +129,8 @@ export class PerformanceService {
 
     // Robot utilization
     const [totalRobots, activeRobots] = await Promise.all([
-      prisma.robots.count(),
-      prisma.robots.count({
+      prisma.robot.count(),
+      prisma.robot.count({
         where: {
           status: { in: ['WORKING', 'IDLE'] },
         },
@@ -141,7 +141,7 @@ export class PerformanceService {
       totalRobots > 0 ? (activeRobots / totalRobots) * 100 : 0;
 
     // Operator productivity (mock calculation)
-    const completedTasks = await prisma.movements.count({
+    const completedTasks = await prisma.movement.count({
       where: {
         status: 'COMPLETED',
         timestamp: {
@@ -151,7 +151,7 @@ export class PerformanceService {
       },
     });
 
-    const operatorCount = await prisma.users.count({
+    const operatorCount = await prisma.user.count({
       where: {
         role: { in: ['OPERATOR', 'MANAGER'] },
         status: 'ACTIVE',
@@ -174,7 +174,7 @@ export class PerformanceService {
 
   private async calculateCosts(dateRange: { start: Date; end: Date }) {
     // Mock cost calculations - in real implementation, integrate with cost tracking
-    const movements = await prisma.movements.count({
+    const movements = await prisma.movement.count({
       where: {
         status: 'COMPLETED',
         timestamp: {
@@ -184,7 +184,7 @@ export class PerformanceService {
       },
     });
 
-    const robotCommands = await prisma.robot_commands.count({
+    const robotCommands = await prisma.robotCommand.count({
       where: {
         status: 'COMPLETED',
         createdAt: {

@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AnimatedCard from "@/components/ui/animated-card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Activity,
   AlertTriangle,
@@ -282,14 +284,15 @@ export default function EnhancedDashboard() {
       {/* Header with System Status */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">ASRS Control Center</h1>
-          <p className="text-gray-600 mt-1">Real-time monitoring and control dashboard</p>
+          <h1 className="text-3xl font-bold text-glow">ASRS Control Center</h1>
+          <p className="text-muted-foreground mt-1">Real-time monitoring and control dashboard</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm font-medium">System Online</span>
           </div>
+          <ThemeToggle />
           <Button
             variant={realTimeUpdates ? "default" : "outline"}
             size="sm"
@@ -323,7 +326,7 @@ export default function EnhancedDashboard() {
 
       {/* System Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <AnimatedCard delay={0}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Throughput</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -332,9 +335,9 @@ export default function EnhancedDashboard() {
             <div className="text-2xl font-bold">{dashboardData?.summary.todaysMovements || 0}/hr</div>
             <p className="text-xs text-muted-foreground">+12% from yesterday</p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard delay={0.1}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Uptime</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -343,9 +346,9 @@ export default function EnhancedDashboard() {
             <div className="text-2xl font-bold">99.8%</div>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard delay={0.2}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Units</CardTitle>
             <Cpu className="h-4 w-4 text-muted-foreground" />
@@ -354,9 +357,9 @@ export default function EnhancedDashboard() {
             <div className="text-2xl font-bold">12/15</div>
             <p className="text-xs text-muted-foreground">3 units in maintenance</p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard delay={0.3}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Items</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -365,13 +368,13 @@ export default function EnhancedDashboard() {
             <div className="text-2xl font-bold">{dashboardData?.summary.totalItems || 0}</div>
             <p className="text-xs text-muted-foreground">Across all locations</p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Performance Chart */}
-        <Card className="lg:col-span-2">
+        <AnimatedCard className="lg:col-span-2" delay={0.4}>
           <CardHeader>
             <CardTitle>Performance Metrics</CardTitle>
             <CardDescription>Throughput and efficiency over time</CardDescription>
@@ -381,10 +384,10 @@ export default function EnhancedDashboard() {
               <Line data={performanceData} options={performanceOptions} />
             </div>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
         {/* Active Alerts */}
-        <Card>
+        <AnimatedCard delay={0.5}>
           <CardHeader>
             <CardTitle>Active Alerts</CardTitle>
             <CardDescription>System notifications and warnings</CardDescription>
@@ -420,13 +423,13 @@ export default function EnhancedDashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
 
       {/* Equipment Status and Environmental Sensors */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Equipment Status */}
-        <Card>
+        <AnimatedCard delay={0.6}>
           <CardHeader>
             <CardTitle>Equipment Status</CardTitle>
             <CardDescription>Real-time status of all ASRS equipment</CardDescription>
@@ -453,10 +456,10 @@ export default function EnhancedDashboard() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
         {/* Environmental Sensors */}
-        <Card>
+        <AnimatedCard delay={0.7}>
           <CardHeader>
             <CardTitle>Environmental Conditions</CardTitle>
             <CardDescription>Current sensor readings</CardDescription>
@@ -496,7 +499,7 @@ export default function EnhancedDashboard() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
     </div>
   );
@@ -966,12 +969,12 @@ export default function EnhancedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Navigation Tabs */}
-      <div className="bg-white border-b">
+      <div className="glass-effect border-b border-neonBlue/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-6 glass-effect">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="sensors">Sensors</TabsTrigger>
               <TabsTrigger value="equipment">Equipment</TabsTrigger>

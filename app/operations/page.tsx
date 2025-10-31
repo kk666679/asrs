@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,10 +71,13 @@ export default function OperationsPage() {
         fetch('/api/sensors')
       ]);
 
-      const [robots, sensors] = await Promise.all([
+      const [robotsData, sensorsData] = await Promise.all([
         robotsRes.json(),
         sensorsRes.json()
       ]);
+
+      const robots = robotsData.robots || robotsData;
+      const sensors = sensorsData.sensors || sensorsData;
 
       const equipmentData: EquipmentItem[] = [
         ...robots.map((robot: any, index: number) => ({
@@ -81,7 +86,7 @@ export default function OperationsPage() {
           type: 'robot' as const,
           status: robot.status.toLowerCase(),
           position: { x: 100 + (index * 150), y: 100 + (index % 3) * 100 },
-          zone: robot.zone?.code || 'Unknown',
+          zone: robot.zones?.code || 'Unknown',
           data: robot
         })),
         ...sensors.map((sensor: any, index: number) => ({
@@ -90,7 +95,7 @@ export default function OperationsPage() {
           type: 'sensor' as const,
           status: sensor.status.toLowerCase(),
           position: { x: 200 + (index * 120), y: 200 + (index % 4) * 80 },
-          zone: sensor.zone?.code || 'Unknown',
+          zone: sensor.zones?.code || 'Unknown',
           data: sensor
         }))
       ];
@@ -277,20 +282,26 @@ export default function OperationsPage() {
                     {selectedEquipment.type === 'robot' && selectedEquipment.data && (
                       <>
                         <div>
-                          <span className="font-medium">Active Commands:</span> {selectedEquipment.data.commands?.filter((c: any) => c.status === 'EXECUTING').length || 0}
+                          <span className="font-medium">Active Commands:</span> {selectedEquipment.data.robot_commands?.filter((c: any) => c.status === 'EXECUTING').length || 0}
                         </div>
                         <div>
                           <span className="font-medium">Location:</span> {selectedEquipment.data.location || 'Unknown'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Battery Level:</span> {selectedEquipment.data.batteryLevel || 'N/A'}%
                         </div>
                       </>
                     )}
                     {selectedEquipment.type === 'sensor' && selectedEquipment.data && (
                       <>
                         <div>
-                          <span className="font-medium">Latest Reading:</span> {selectedEquipment.data.readings?.[0]?.value || 'N/A'} {selectedEquipment.data.readings?.[0]?.unit || ''}
+                          <span className="font-medium">Latest Reading:</span> {selectedEquipment.data.sensor_readings?.[0]?.value || 'N/A'} {selectedEquipment.data.sensor_readings?.[0]?.unit || ''}
                         </div>
                         <div>
-                          <span className="font-medium">Last Update:</span> {selectedEquipment.data.readings?.[0] ? new Date(selectedEquipment.data.readings[0].timestamp).toLocaleTimeString() : 'N/A'}
+                          <span className="font-medium">Last Update:</span> {selectedEquipment.data.sensor_readings?.[0] ? new Date(selectedEquipment.data.sensor_readings[0].timestamp).toLocaleTimeString() : 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Type:</span> {selectedEquipment.data.type}
                         </div>
                       </>
                     )}
@@ -366,7 +377,7 @@ export default function OperationsPage() {
                           <div className="flex justify-between">
                             <span className="text-sm">Reading:</span>
                             <span className="font-medium">
-                              {sensor.data?.readings?.[0]?.value || 'N/A'} {sensor.data?.readings?.[0]?.unit || ''}
+                              {sensor.data?.sensor_readings?.[0]?.value || 'N/A'} {sensor.data?.sensor_readings?.[0]?.unit || ''}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -392,9 +403,9 @@ export default function OperationsPage() {
             <CardContent>
               <div className="space-y-4">
                 {equipment
-                  .filter(e => e.type === 'robot' && e.data?.commands?.length > 0)
-                  .flatMap(robot => 
-                    robot.data.commands.map((command: any) => (
+                  .filter(e => e.type === 'robot' && e.data?.robot_commands?.length > 0)
+                  .flatMap(robot =>
+                    robot.data.robot_commands.map((command: any) => (
                       <div key={command.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-full ${

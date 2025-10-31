@@ -18,7 +18,7 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, name, password, warehouseId } = registerDto;
 
-    const existingUser = await this.prisma.users.findUnique({
+    const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
     if (existingUser) {
@@ -27,7 +27,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.users.create({
+    const user = await this.prisma.user.create({
       data: {
         id: randomUUID(),
         email,
@@ -46,7 +46,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email },
     });
     if (!user) {
@@ -79,7 +79,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid MFA token');
     }
 
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,

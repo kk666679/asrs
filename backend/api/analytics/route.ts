@@ -46,13 +46,13 @@ export async function GET(request: NextRequest) {
     if (period) where.period = period;
 
     const [metrics, total] = await Promise.all([
-      prisma.businessMetrics.findMany({
+      prisma.businessMetric.findMany({
         where,
         orderBy: { calculationDate: 'desc' },
         skip,
         take: limit,
       }),
-      prisma.businessMetrics.count({ where }),
+      prisma.businessMetric.count({ where }),
     ]);
 
     return NextResponse.json({

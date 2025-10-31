@@ -1,11 +1,71 @@
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { create } from 'ipfs-http-client';
+import https from 'https';
 
 const prisma = new PrismaClient();
 
+// Initialize IPFS client
+const ipfs = create({
+  host: 'ipfs.infura.io',
+  port: 5001,
+  protocol: 'https',
+  headers: {
+    authorization: `Basic ${Buffer.from(process.env.INFURA_PROJECT_ID + ':' + process.env.INFURA_PROJECT_SECRET).toString('base64')}`,
+  },
+});
+
+// Function to download image from URL
+function downloadImage(url: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+// Function to upload to IPFS and save to DB
+async function uploadSampleCertificate(url: string, name: string, certifyingBody: string, description: string) {
+  try {
+    console.log(`📤 Uploading ${name} to IPFS...`);
+
+    // Download image
+    const buffer = await downloadImage(url);
+
+    // Upload to IPFS
+    const result = await ipfs.add({
+      path: name,
+      content: buffer
+    });
+
+    // Save to database
+    const ipfsFile = await prisma.iPFSFile.create({
+      data: {
+        name,
+        hash: result.cid.toString(),
+        size: buffer.length,
+        type: 'image/png', // Assuming PNG, adjust if needed
+        status: 'PINNED',
+        halalCertified: true,
+        certifyingBody,
+        description,
+      },
+    });
+
+    console.log(`✅ Uploaded ${name} with hash: ${result.cid.toString()}`);
+    return ipfsFile;
+  } catch (error) {
+    console.error(`❌ Failed to upload ${name}:`, error);
+    return null;
+  }
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
-  
+
   console.log('🧹 Clearing existing data...');
   await prisma.movement.deleteMany();
   await prisma.binItem.deleteMany();
@@ -19,6 +79,39 @@ async function main() {
   await prisma.sensor.deleteMany();
   await prisma.robot.deleteMany();
   await prisma.warehouse.deleteMany();
+  await prisma.iPFSFile.deleteMany();
+
+  // Upload sample halal certificates to IPFS
+  console.log('📤 Uploading sample halal certificates to IPFS...');
+  const sampleCertificates = [
+    {
+      url: 'https://b5uzsvjjgba2o4gv.public.blob.vercel-storage.com/Example-of-Halal-Certificate-Malaysia.png',
+      name: 'Halal Certificate Malaysia.png',
+      certifyingBody: 'JAKIM (Malaysia)',
+      description: 'Official halal certification from JAKIM Malaysia'
+    },
+    {
+      url: 'https://b5uzsvjjgba2o4gv.public.blob.vercel-storage.com/halal_philippines.jpg',
+      name: 'Halal Certificate Philippines.jpg',
+      certifyingBody: 'Halal Accreditation Board Philippines',
+      description: 'Official halal certification from Philippines'
+    },
+    {
+      url: 'https://b5uzsvjjgba2o4gv.public.blob.vercel-storage.com/halalcertVietnam.png',
+      name: 'Halal Certificate Vietnam.png',
+      certifyingBody: 'Vietnam Halal Certification Authority',
+      description: 'Official halal certification from Vietnam'
+    }
+  ];
+
+  const uploadedCertificates = [];
+  for (const cert of sampleCertificates) {
+    const uploaded = await uploadSampleCertificate(cert.url, cert.name, cert.certifyingBody, cert.description);
+    if (uploaded) {
+      uploadedCertificates.push(uploaded);
+    }
+  }
+  console.log(`✅ Uploaded ${uploadedCertificates.length} sample certificates to IPFS`);
 
   const warehouse = await prisma.warehouse.create({
     data: { code: 'WH001', name: 'Main Warehouse', address: '123 Industrial Ave' }
@@ -101,6 +194,7 @@ async function main() {
   console.log(`   Racks: ${racks.length}`);
   console.log(`   Bins: ${bins.length}`);
   console.log(`   Items: ${items.length}`);
+  console.log(`   IPFS Files: ${uploadedCertificates.length}`);
 }
 
 main()

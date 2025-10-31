@@ -30,6 +30,10 @@ export function NavMain({
     items?: {
       title: string
       url: string
+      items?: {
+        title: string
+        url: string
+      }[]
     }[]
   }[]
 }) {
@@ -40,7 +44,7 @@ export function NavMain({
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url || (item.items && item.items.some(subItem => pathname === subItem.url))
+          const isActive = pathname === item.url || (item.items && item.items.some(subItem => pathname === subItem.url || (subItem.items && subItem.items.some(nestedItem => pathname === nestedItem.url))))
 
           return (
             <Collapsible
@@ -64,15 +68,50 @@ export function NavMain({
                 {item.items && (
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {item.items?.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                            <a href={subItem.url}>
-                              <span>{subItem.title}</span>
-                            </a>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
+                      {item.items?.map((subItem) => {
+                        const isSubActive = pathname === subItem.url || (subItem.items && subItem.items.some(nestedItem => pathname === nestedItem.url))
+
+                        return (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            {subItem.items ? (
+                              <Collapsible
+                                key={subItem.title}
+                                asChild
+                                defaultOpen={isSubActive}
+                                className="group/nested-collapsible"
+                              >
+                                <div>
+                                  <CollapsibleTrigger asChild>
+                                    <SidebarMenuSubButton asChild>
+                                      <div className="flex items-center justify-between w-full">
+                                        <span>{subItem.title}</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/nested-collapsible:rotate-90" />
+                                      </div>
+                                    </SidebarMenuSubButton>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <div className="ml-4 mt-1 space-y-1">
+                                      {subItem.items.map((nestedItem) => (
+                                        <SidebarMenuSubButton key={nestedItem.title} asChild isActive={pathname === nestedItem.url}>
+                                          <a href={nestedItem.url}>
+                                            <span>{nestedItem.title}</span>
+                                          </a>
+                                        </SidebarMenuSubButton>
+                                      ))}
+                                    </div>
+                                  </CollapsibleContent>
+                                </div>
+                              </Collapsible>
+                            ) : (
+                              <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                                <a href={subItem.url}>
+                                  <span>{subItem.title}</span>
+                                </a>
+                              </SidebarMenuSubButton>
+                            )}
+                          </SidebarMenuSubItem>
+                        )
+                      })}
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 )}

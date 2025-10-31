@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export class RoboticsService {
   async scheduleTask(task: Omit<RobotTask, 'id'>): Promise<string> {
-    const robot = await prisma.robots.findUnique({
+    const robot = await prisma.robot.findUnique({
       where: { id: task.robotId },
     });
 
@@ -18,7 +18,7 @@ export class RoboticsService {
       throw new Error('Robot is not available');
     }
 
-    const command = await prisma.robot_commands.create({
+    const command = await prisma.robotCommand.create({
       data: {
         id: randomUUID(),
         robotId: task.robotId,
@@ -29,7 +29,7 @@ export class RoboticsService {
       },
     });
 
-    await prisma.robots.update({
+    await prisma.robot.update({
       where: { id: task.robotId },
       data: { status: 'WORKING' },
     });
@@ -38,7 +38,7 @@ export class RoboticsService {
   }
 
   async executeCommand(commandId: string) {
-    const command = await prisma.robot_commands.findUnique({
+    const command = await prisma.robotCommand.findUnique({
       where: { id: commandId },
       include: { robots: true },
     });
@@ -48,7 +48,7 @@ export class RoboticsService {
     }
 
     try {
-      await prisma.robot_commands.update({
+      await prisma.robotCommand.update({
         where: { id: commandId },
         data: {
           status: 'EXECUTING',
@@ -58,7 +58,7 @@ export class RoboticsService {
 
       const result = await this.performRobotAction(command);
 
-      await prisma.robot_commands.update({
+      await prisma.robotCommand.update({
         where: { id: commandId },
         data: {
           status: 'COMPLETED',
@@ -66,14 +66,14 @@ export class RoboticsService {
         },
       });
 
-      await prisma.robots.update({
+      await prisma.robot.update({
         where: { id: command.robotId },
         data: { status: 'IDLE' },
       });
 
       return result;
     } catch (error) {
-      await prisma.robot_commands.update({
+      await prisma.robotCommand.update({
         where: { id: commandId },
         data: {
           status: 'FAILED',
@@ -82,7 +82,7 @@ export class RoboticsService {
         },
       });
 
-      await prisma.robots.update({
+      await prisma.robot.update({
         where: { id: command.robotId },
         data: { status: 'ERROR' },
       });
@@ -122,7 +122,7 @@ export class RoboticsService {
     );
 
     // Update robot location
-    await prisma.robots.update({
+    await prisma.robot.update({
       where: { id: command.robotId },
       data: { location: destination },
     });
@@ -133,7 +133,7 @@ export class RoboticsService {
   private async executePick(command: any) {
     const { binId, itemId, quantity } = command.parameters;
 
-    const binItem = await prisma.bin_items.findFirst({
+    const binItem = await prisma.binItem.findFirst({
       where: { binId, itemId },
     });
 
@@ -142,12 +142,12 @@ export class RoboticsService {
     }
 
     // Update inventory
-    await prisma.bin_items.update({
+    await prisma.binItem.update({
       where: { id: binItem.id },
       data: { quantity: binItem.quantity - quantity },
     });
 
-    await prisma.bins.update({
+    await prisma.bin.update({
       where: { id: binId },
       data: { currentLoad: { decrement: quantity } },
     });
@@ -158,7 +158,7 @@ export class RoboticsService {
   private async executePlace(command: any) {
     const { binId, itemId, quantity } = command.parameters;
 
-    const bin = await prisma.bins.findUnique({
+    const bin = await prisma.bin.findUnique({
       where: { id: binId },
     });
 
@@ -167,22 +167,22 @@ export class RoboticsService {
     }
 
     // Find or create bin item
-    const existingBinItem = await prisma.bin_items.findFirst({
+    const existingBinItem = await prisma.binItem.findFirst({
       where: { binId, itemId },
     });
 
     if (existingBinItem) {
-      await prisma.bin_items.update({
+      await prisma.binItem.update({
         where: { id: existingBinItem.id },
         data: { quantity: existingBinItem.quantity + quantity },
       });
     } else {
-      await prisma.bin_items.create({
+      await prisma.binItem.create({
         data: { id: randomUUID(), binId, itemId, quantity },
       });
     }
 
-    await prisma.bins.update({
+    await prisma.bin.update({
       where: { id: binId },
       data: { currentLoad: { increment: quantity } },
     });
@@ -195,9 +195,9 @@ export class RoboticsService {
 
     // Try to find item, bin, or shipment with this barcode
     const [item, bin, shipment] = await Promise.all([
-      prisma.items.findUnique({ where: { barcode } }),
-      prisma.bins.findUnique({ where: { barcode } }),
-      prisma.shipments.findUnique({ where: { barcode } }),
+      prisma.item.findUnique({ where: { barcode } }),
+      prisma.bin.findUnique({ where: { barcode } }),
+      prisma.shipment.findUnique({ where: { barcode } }),
     ]);
 
     const result = item || bin || shipment;
@@ -235,7 +235,7 @@ export class RoboticsService {
   }
 
   async getAllRobots(type?: string, status?: string, zoneId?: string) {
-    const robots = await prisma.robots.findMany({
+    const robots = await prisma.robot.findMany({
       where: {
         ...(type && { type: type as any }),
         ...(status && { status: status as any }),
@@ -283,7 +283,7 @@ export class RoboticsService {
     const { code, name, type, zoneId, location } = data;
 
     // Check if robot code already exists
-    const existingRobot = await prisma.robots.findUnique({
+    const existingRobot = await prisma.robot.findUnique({
       where: { code },
     });
 
@@ -292,7 +292,7 @@ export class RoboticsService {
     }
 
     // Validate zone exists
-    const zone = await prisma.zones.findUnique({
+    const zone = await prisma.zone.findUnique({
       where: { id: zoneId },
     });
 
@@ -300,7 +300,7 @@ export class RoboticsService {
       throw new Error('Zone not found');
     }
 
-    const robot = await prisma.robots.create({
+    const robot = await prisma.robot.create({
       data: {
         id: randomUUID(),
         code,
@@ -320,7 +320,7 @@ export class RoboticsService {
   }
 
   async getAvailableRobots(zoneId?: string) {
-    return await prisma.robots.findMany({
+    return await prisma.robot.findMany({
       where: {
         status: 'IDLE',
         ...(zoneId && { zoneId }),
@@ -332,7 +332,7 @@ export class RoboticsService {
   }
 
   async getRobotStatus(robotId: string) {
-    const robot = await prisma.robots.findUnique({
+    const robot = await prisma.robot.findUnique({
       where: { id: robotId },
       include: {
         robot_commands: {

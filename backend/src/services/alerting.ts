@@ -20,7 +20,7 @@ export class AlertingService {
   }
 
   private async checkLowStock(): Promise<InventoryAlert[]> {
-    const items = await prisma.items.findMany({
+    const items = await prisma.item.findMany({
       where: {
         minStock: { gt: 0 },
       },
@@ -62,7 +62,7 @@ export class AlertingService {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    const expiringItems = await prisma.bin_items.findMany({
+    const expiringItems = await prisma.binItem.findMany({
       where: {
         expiryDate: {
           lte: thirtyDaysFromNow,
@@ -97,7 +97,7 @@ export class AlertingService {
   }
 
   private async checkOverstock(): Promise<InventoryAlert[]> {
-    const items = await prisma.items.findMany({
+    const items = await prisma.item.findMany({
       where: {
         maxStock: { not: null },
       },
@@ -135,7 +135,7 @@ export class AlertingService {
   async checkSensorAlerts(): Promise<SensorAlert[]> {
     const alerts: SensorAlert[] = [];
 
-    const sensors = await prisma.sensors.findMany({
+    const sensors = await prisma.sensor.findMany({
       where: {
         status: 'ACTIVE',
       },

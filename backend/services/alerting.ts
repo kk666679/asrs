@@ -140,7 +140,7 @@ export class AlertingService {
         status: 'ACTIVE',
       },
       include: {
-        sensorReadings: {
+        readings: {
           orderBy: { timestamp: 'desc' },
           take: 1,
         },
@@ -148,7 +148,7 @@ export class AlertingService {
     });
 
     for (const sensor of sensors) {
-      const latestReading = sensor.sensorReadings[0];
+      const latestReading = sensor.readings[0];
 
       if (!latestReading) {
         alerts.push({

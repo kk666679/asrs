@@ -1,8 +1,8 @@
-
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@tensorflow/tfjs-node'],
+  serverExternalPackages: ["@tensorflow/tfjs-node"],
+  turbopack: {},
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -12,10 +12,18 @@ const nextConfig: NextConfig = {
     if (isServer) {
       config.externals = config.externals || [];
       config.externals.push({
-        '@tensorflow/tfjs-node': 'commonjs @tensorflow/tfjs-node',
+        "@tensorflow/tfjs-node": "commonjs @tensorflow/tfjs-node",
       });
     }
     return config;
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:3002/api/:path*",
+      },
+    ];
   },
 };
 

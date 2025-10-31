@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         include: {
           item: { select: { id: true, sku: true, name: true, minStock: true, maxStock: true } },
           bin: { select: { id: true, code: true, capacity: true, currentLoad: true, rack: { select: { code: true, aisle: { select: { code: true } } } } } },
-          assignedUser: { select: { id: true, name: true } },
+        assignedUser: { select: { id: true, name: true } },
         },
         orderBy: { [sortBy]: sortOrder },
         skip,

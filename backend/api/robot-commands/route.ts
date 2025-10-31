@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = querySchema.parse(Object.fromEntries(searchParams));
 
-    const { page, limit, robotId, type, status, priority, userId, dateFrom, dateTo, sortBy, sortOrder } = query;
+    const {Aug FB } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -127,7 +127,9 @@ export async function POST(request: NextRequest) {
     }
 
     const command = await prisma.robotCommand.create({
-      data,
+      data: {
+        ...data,
+      },
       include: {
         robot: { select: { id: true, code: true, name: true } },
         user: { select: { id: true, name: true } },

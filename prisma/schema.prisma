@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -94,6 +94,29 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum ReplenishmentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReplenishmentReason {
+  LOW_STOCK
+  OPTIMIZATION
+  SEASONAL
+  DEMAND_SPIKE
+  REBALANCE
+}
+
+enum ReplenishmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
 }
 
 enum RackOrientation {
@@ -227,6 +250,8 @@ model Bin {
   fromMovements Movement[] @relation("MovementFromBin")
   toMovements   Movement[] @relation("MovementToBin")
   sensors     Sensor[]
+  handlingUnits HandlingUnit[]
+  replenishments Replenishment[]
 
   @@map("bins")
 }
@@ -247,6 +272,8 @@ model Item {
   supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   binItems    BinItem[]
   shipmentItems ShipmentItem[]
+  handlingUnitItems HandlingUnitItem[]
+  replenishments Replenishment[]
 
   @@map("items")
 }
@@ -344,6 +371,8 @@ model User {
   warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   movements Movement[]
   robotCommands RobotCommand[]
+  handlingUnits HandlingUnit[]
+  replenishments Replenishment[]
 
   @@map("users")
 }
@@ -507,4 +536,108 @@ model WarehouseStorage {
   product                Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("warehouse_storages")
+}
+
+// Handling Units Management
+
+enum HandlingUnitType {
+  PALLET
+  CARTON
+  CRATE
+  BIN
+  CONTAINER
+}
+
+enum HandlingUnitStatus {
+  AVAILABLE
+  IN_TRANSIT
+  DAMAGED
+  QUARANTINED
+  RESERVED
+}
+
+model HandlingUnit {
+  id          String             @id @default(cuid())
+  type        HandlingUnitType
+  barcode     String             @unique
+  weight      Float
+  dimensions  String             // JSON string: {length, width, height}
+  location    String?
+  status      HandlingUnitStatus @default(AVAILABLE)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  assignedTo  String?
+
+  // Relations
+  items       HandlingUnitItem[]
+  binId       String?
+  userId      String?
+
+  bin         Bin?    @relation(fields: [binId], references: [id])
+  user        User?   @relation(fields: [userId], references: [id])
+
+  @@map("handling_units")
+}
+
+model HandlingUnitItem {
+  id          String   @id @default(cuid())
+  quantity    Int
+  batchNumber String?
+  expiryDate  DateTime?
+  handlingUnitId String
+  itemId      String
+
+  handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Cascade)
+  item         Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([handlingUnitId, itemId, batchNumber])
+  @@map("handling_unit_items")
+}
+
+// IPFS File Storage
+
+enum IPFSFileStatus {
+  PINNED
+  UNPINNED
+  PENDING
+}
+
+model IPFSFile {
+  id             String         @id @default(cuid())
+  name           String
+  hash           String         @unique
+  size           Int
+  type           String
+  uploadedAt     DateTime       @default(now())
+  status         IPFSFileStatus @default(PENDING)
+  halalCertified Boolean        @default(false)
+  certifyingBody String?
+  blockchainTx   String?
+  description    String?
+
+  @@map("ipfs_files")
+}
+
+model Replenishment {
+  id              String               @id @default(cuid())
+  itemId          String
+  binId           String
+  quantity        Int
+  priority        ReplenishmentPriority @default(MEDIUM)
+  reason          ReplenishmentReason   @default(LOW_STOCK)
+  status          ReplenishmentStatus   @default(PENDING)
+  scheduledDate   DateTime
+  actualStartDate DateTime?
+  completedDate   DateTime?
+  notes           String?
+  issues          String?
+  assignedTo      String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  item            Item                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  bin             Bin                  @relation(fields: [binId], references: [id], onDelete: Cascade)
+  assignedUser    User?                @relation(fields: [assignedTo], references: [id])
+
+  @@map("replenishments")
 }

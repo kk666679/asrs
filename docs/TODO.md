@@ -1,35 +1,19 @@
-# TypeScript Build Errors Fix Plan
+# ASRS System - TODO List
 
-## Information Gathered
-- **auth.service.ts**: Password field type errors due to outdated Prisma client types
-- **prisma.service.ts**: Invalid 'beforeExit' event for $on method
-- **robotics.ts**: Multiple issues including missing required fields, incorrect model names (shipment vs shipments), wrong property access (commands vs robot_commands), and type mismatches
+## Completed Tasks
+- [x] Install and implement dark/light mode toggle functionality
+  - [x] Install next-themes package
+  - [x] Create ThemeProvider component
+  - [x] Wrap app with ThemeProvider in layout.tsx
+  - [x] Create ThemeToggle component
+  - [x] Add theme toggle to nav-user dropdown
+  - [x] Add light theme CSS variables
+  - [x] Update glass-effect for light mode
+  - [x] Test theme switching functionality
 
-## Key Technical Concepts
-- Prisma ORM with PostgreSQL database
-- NestJS service classes with dependency injection
-- TypeScript strict typing with generated Prisma types
-- Database schema with enums and relations
-
-## Relevant Files
-- backend/src/modules/auth/auth.service.ts
-- backend/src/prisma.service.ts
-- backend/src/services/robotics.ts
-- backend/prisma/schema.prisma
-
-## Plan
-- [x] Regenerate Prisma client to fix type mismatches
-- [x] Fix $on event in prisma.service.ts
-- [x] Fix missing required fields in robotics.ts create operations
-- [x] Fix incorrect model name (shipment -> shipments)
-- [x] Fix property access (commands -> robot_commands)
-- [x] Fix type mismatches in robotics.ts
-
-## Dependent Files to be edited
-- backend/src/prisma.service.ts
-- backend/src/services/robotics.ts
-
-## Followup steps
-- [x] Run prisma generate after fixes
-- [x] Test the build after fixes
-- [x] Verify database operations work correctly
+## Pending Tasks
+- [ ] Test the toggle functionality across the application
+- [ ] Ensure proper persistence of theme preference (localStorage/cookies)
+- [ ] Verify theme switching works on all pages
+- [ ] Check responsive behavior of theme toggle
+- [ ] Test system theme detection

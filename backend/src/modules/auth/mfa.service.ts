@@ -65,7 +65,7 @@ export class MfaService {
   async enableMfa(userId: string, secret: string): Promise<void> {
     const backupCodes = this.generateBackupCodes();
 
-    await this.prisma.users.update({
+    await this.prisma.user.update({
       where: { id: userId },
       data: {
         mfaEnabled: true,
@@ -79,7 +79,7 @@ export class MfaService {
    * Disable MFA for a user
    */
   async disableMfa(userId: string): Promise<void> {
-    await this.prisma.users.update({
+    await this.prisma.user.update({
       where: { id: userId },
       data: {
         mfaEnabled: false,
@@ -93,7 +93,7 @@ export class MfaService {
    * Verify MFA token or backup code
    */
   async verifyMfa(userId: string, token: string): Promise<boolean> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         mfaSecret: true,
@@ -113,7 +113,7 @@ export class MfaService {
     // If TOTP fails, check backup codes
     if (user.backupCodes.includes(token)) {
       // Remove the used backup code
-      await this.prisma.users.update({
+      await this.prisma.user.update({
         where: { id: userId },
         data: {
           backupCodes: user.backupCodes.filter((code) => code !== token),
@@ -129,7 +129,7 @@ export class MfaService {
    * Check if user has MFA enabled
    */
   async isMfaEnabled(userId: string): Promise<boolean> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { mfaEnabled: true },
     });
@@ -143,7 +143,7 @@ export class MfaService {
   async getMfaSetup(
     userId: string,
   ): Promise<{ qrCode: string; secret: string; backupCodes: string[] } | null> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         mfaEnabled: true,

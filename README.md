@@ -5,15 +5,19 @@
 
 ---
 
-## 🧩 Tech & Platform Badges
+## 🧩 Tech Stack & Platform Badges
 
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.6-black?logo=nextdotjs)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?logo=tailwindcss)
-![Prisma](https://img.shields.io/badge/Prisma-6.17.1-2D3748?logo=prisma)
+![NestJS](https://img.shields.io/badge/NestJS-11.0.1-E0234E?logo=nestjs)
+![Prisma](https://img.shields.io/badge/Prisma-6.18.0-2D3748?logo=prisma)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)
 ![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.22.0-FF6F00?logo=tensorflow)
+![Autonomous Mobile Robots](https://img.shields.io/badge/AMR-Robotics-FF6B35?logo=robotframework)
+![Blockchain](https://img.shields.io/badge/Blockchain-Smart%20Contracts-121D33?logo=ethereum)
+![IPFS](https://img.shields.io/badge/IPFS-Decentralized%20Storage-65C2CB?logo=ipfs)
 ![Node.js](https://img.shields.io/badge/Node.js-22+-339933?logo=node.js)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker)
 ![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)
@@ -38,20 +42,22 @@ graph TB
     end
 
     subgraph "Backend Layer"
-        B[Next.js API Routes + NextAuth.js]
+        B[NestJS API + Authentication]
         C[TensorFlow.js Forecasting]
-        D[Prisma ORM + PostgreSQL + Redis]
+        D[Prisma ORM + PostgreSQL]
+        E[Blockchain Smart Contract/IPFS Integration]
     end
 
     subgraph "Integration Layer"
-        E[IoT Sensors]
-        F[Robotics API]
-        G[Barcode/QR Systems]
+        F[IoT Sensors & Robotics]
+        G[Barcode/QR/RFID Systems]
         H[Supplier APIs]
+        I[External Systems]
     end
 
-    subgraph "Analytics"
-        I[AI Models + Predictive Dashboards]
+    subgraph "Analytics & AI"
+        J[AI Models + Predictive Dashboards]
+        K[Real-time Monitoring]
     end
 
     A --> B
@@ -60,8 +66,11 @@ graph TB
     B --> F
     B --> G
     B --> H
-    D --> I
-    E --> I
+    B --> I
+    D --> J
+    E --> J
+    F --> K
+    J --> K
 ```
 
 ---
@@ -71,6 +80,12 @@ graph TB
 ### 🏷 Inventory & Warehouse Management
 
 * Full SKU, batch, and expiry tracking
+* **Autonomous Mobile Robots (AMR)** fleet management and control
+* Real-time AMR monitoring, task assignment, and route optimization
+* Battery level tracking and automated charging station management
+* AMR status monitoring (idle, moving, charging, error, maintenance)
+* Interactive warehouse map with AMR position visualization
+* Fleet-wide command controls (start, pause, emergency stop)
 * Real-time updates with automated reconciliation
 * Multi-unit and multi-warehouse support
 * Reorder point automation and stock alerts
@@ -95,7 +110,7 @@ graph TB
 
 ### 📦 Barcode & QR Operations
 
-* Barcode/QR code generation, validation, and scanning
+* Barcode/QR/RFID code generation, validation, and scanning
 * Mobile-friendly interface with **HTML5 QR Code API**
 * Bulk operations for inbound/outbound logistics
 
@@ -103,7 +118,15 @@ graph TB
 
 * Halal certification lifecycle tracking
 * Regulatory compliance (HACCP, FDA, GMP, OSHA)
-* Supplier certification verification and documentation
+* Supplier certification verification, documentation and smart contract
+
+### ⛓️ Smart Contracts & IPFS Integration
+
+* **Decentralized storage** for immutable audit trails and documents
+* **Smart contract automation** for supply chain transactions and compliance
+* **Blockchain-based traceability** for product lifecycle management
+* **Cryptographic verification** of certifications and transactions
+* **IPFS file storage** for secure document management
 
 ---
 
@@ -124,9 +147,10 @@ graph TB
 | Layer               | Technology                                              |
 | ------------------- | ------------------------------------------------------- |
 | **Frontend**        | Next.js 15, React 19, TypeScript 5, TailwindCSS 4       |
-| **Backend**         | Next.js API Routes, Prisma ORM, PostgreSQL, NextAuth.js |
+| **Backend**         | NestJS 11, Prisma ORM, PostgreSQL, JWT Authentication  |
 | **AI/ML**           | TensorFlow.js (Demand Forecasting, Optimization)        |
-| **IoT Integration** | HTML5 QR Code, Sensor APIs                              |
+| **Blockchain**      | IPFS Integration, Smart Contracts                       |
+| **IoT Integration** | HTML5 QR Code, Sensor APIs, Robotic Control             |
 | **Cloud**           | Vercel, AWS, Railway, Docker                            |
 | **Analytics**       | Recharts, Lucide, Custom KPI Engine                     |
 
@@ -139,21 +163,33 @@ graph TB
 git clone https://github.com/your-org/asrs-system.git
 cd asrs-system
 
-# 2. Install dependencies
+# 2. Install frontend dependencies
 npm install
 
-# 3. Setup environment
-cp .env.example .env.local
+# 3. Install backend dependencies
+cd backend
+npm install
+cd ..
 
-# 4. Initialize database
+# 4. Setup environment files
+cp .env.example .env.local
+cp backend/.env.example backend/.env
+
+# 5. Initialize databases
 npx prisma generate
 npx prisma db push
 
-# 5. Run development server
+# 6. Run backend server (in one terminal)
+cd backend
+npm run start:dev
+
+# 7. Run frontend server (in another terminal)
+cd ..
 npm run dev
 ```
 
-🖥️ Visit → [http://localhost:3000](http://localhost:3000)
+🖥️ Frontend → [http://localhost:3000](http://localhost:3000)  
+🔧 Backend API → [http://localhost:3001](http://localhost:3001)
 
 ---
 
@@ -230,7 +266,7 @@ docker run -p 3000:3000 asrs-system
 
 1. Fork the repo
 2. Create a feature branch
-3. Submit a PR following [Conventional Commits](https://www.conventionalcommits.org/)
+3. Submit a PR following [Conventional Commits](https://kk.org/)
 4. Add unit tests and update documentation
 
 ```bash
@@ -255,4 +291,3 @@ git push origin feat/new-feature
 
 Licensed under the **MIT License**.
 See [LICENSE.md](LICENSE.md) for full terms.
-
