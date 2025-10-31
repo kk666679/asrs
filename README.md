@@ -266,7 +266,7 @@ docker run -p 3000:3000 asrs-system
 
 1. Fork the repo
 2. Create a feature branch
-3. Submit a PR following [Conventional Commits](https://kk.org/)
+3. Submit a PR following [Conventional Commits](https://.org/)
 4. Add unit tests and update documentation
 
 ```bash
