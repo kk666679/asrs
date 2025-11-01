@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAlerts } from '@/lib/hooks/useAlerts';
+import { Alert as AlertType } from '@/lib/types';
 import {
   AlertTriangle,
   Bell,
@@ -21,20 +23,7 @@ import {
   Activity
 } from 'lucide-react';
 
-interface AlertItem {
-  id: string;
-  type: 'warning' | 'critical' | 'info' | 'maintenance';
-  title: string;
-  description: string;
-  time: string;
-  acknowledged: boolean;
-  acknowledgedBy?: string;
-  acknowledgedAt?: string;
-  equipment?: string;
-  zone?: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  category: 'equipment' | 'sensor' | 'system' | 'maintenance' | 'security';
-}
+
 
 const alertTypeIcons = {
   warning: AlertTriangle,
@@ -51,124 +40,38 @@ const alertTypeColors = {
 };
 
 const priorityColors = {
-  low: 'bg-gray-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
+  info: 'bg-blue-500',
+  warning: 'bg-yellow-500',
   critical: 'bg-red-500',
 };
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterPriority, setFilterPriority] = useState('all');
-  const [selectedAlert, setSelectedAlert] = useState<AlertItem | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [acknowledgeNotes, setAcknowledgeNotes] = useState('');
+  const {
+    alerts,
+    filteredAlerts,
+    alertStats,
+    isLoading,
+    error,
+    filters,
+    setFilters,
+    clearFilters,
+    acknowledgeAlert: acknowledgeAlertHook,
+    refreshAlerts
+  } = useAlerts();
+  
+  const [selectedAlert, setSelectedAlert] = React.useState<AlertType | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [acknowledgeNotes, setAcknowledgeNotes] = React.useState('');
 
-  useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, [filterType, filterStatus, filterPriority]);
 
-  const fetchAlerts = async () => {
+
+  const handleAcknowledgeAlert = async (alertId: string) => {
     try {
-      // Mock API call - in real implementation, this would fetch from /api/alerts
-      const mockAlerts: AlertItem[] = [
-        {
-          id: '1',
-          type: 'warning',
-          title: 'Elevated Vibration - Shuttle #3',
-          description: 'Vibration levels above threshold in motor assembly. Motor health at 75%.',
-          time: '10 minutes ago',
-          acknowledged: false,
-          equipment: 'Shuttle #3',
-          zone: 'Aisle 7',
-          priority: 'medium',
-          category: 'equipment'
-        },
-        {
-          id: '2',
-          type: 'info',
-          title: 'Preventive Maintenance Due',
-          description: 'Conveyor System A maintenance scheduled in 2 days. Last maintenance: 2024-01-15.',
-          time: '1 hour ago',
-          acknowledged: false,
-          equipment: 'Conveyor A',
-          zone: 'Loading Bay',
-          priority: 'low',
-          category: 'maintenance'
-        },
-        {
-          id: '3',
-          type: 'critical',
-          title: 'Temperature Sensor Failure',
-          description: 'Temperature sensor in Zone B has failed. Current reading unavailable.',
-          time: '5 minutes ago',
-          acknowledged: false,
-          equipment: 'Temp Sensor B-12',
-          zone: 'Zone B',
-          priority: 'high',
-          category: 'sensor'
-        },
-        {
-          id: '4',
-          type: 'maintenance',
-          title: 'VLM #2 Calibration Required',
-          description: 'VLM #2 position calibration is out of tolerance. Accuracy reduced by 2%.',
-          time: '2 hours ago',
-          acknowledged: true,
-          acknowledgedBy: 'John Smith',
-          acknowledgedAt: '1 hour ago',
-          equipment: 'VLM #2',
-          zone: 'Zone B',
-          priority: 'medium',
-          category: 'equipment'
-        },
-        {
-          id: '5',
-          type: 'info',
-          title: 'System Backup Completed',
-          description: 'Daily system backup completed successfully. 2.3GB backed up.',
-          time: '6 hours ago',
-          acknowledged: true,
-          acknowledgedBy: 'System',
-          acknowledgedAt: '6 hours ago',
-          priority: 'low',
-          category: 'system'
-        }
-      ];
-
-      setAlerts(mockAlerts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load alerts');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const acknowledgeAlert = async (alertId: string) => {
-    try {
-      // Mock API call
-      console.log(`Acknowledging alert ${alertId} with notes: ${acknowledgeNotes}`);
-
-      // Update local state
-      setAlerts(prev => prev.map(alert =>
-        alert.id === alertId ? {
-          ...alert,
-          acknowledged: true,
-          acknowledgedBy: 'Current User', // In real app, get from auth
-          acknowledgedAt: new Date().toLocaleString()
-        } : alert
-      ));
-
+      acknowledgeAlertHook(alertId);
       setIsDialogOpen(false);
       setAcknowledgeNotes('');
     } catch (err) {
-      setError('Failed to acknowledge alert');
+      console.error('Failed to acknowledge alert:', err);
     }
   };
 
@@ -185,24 +88,9 @@ export default function AlertsPage() {
     );
   };
 
-  const filteredAlerts = alerts.filter(alert => {
-    if (filterType !== 'all' && alert.type !== filterType) return false;
-    if (filterStatus !== 'all') {
-      if (filterStatus === 'acknowledged' && !alert.acknowledged) return false;
-      if (filterStatus === 'unacknowledged' && alert.acknowledged) return false;
-    }
-    if (filterPriority !== 'all' && alert.priority !== filterPriority) return false;
-    return true;
-  });
 
-  const alertStats = {
-    total: alerts.length,
-    unacknowledged: alerts.filter(a => !a.acknowledged).length,
-    critical: alerts.filter(a => a.type === 'critical').length,
-    warnings: alerts.filter(a => a.type === 'warning').length,
-  };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Loading alerts...</div>
@@ -249,7 +137,7 @@ export default function AlertsPage() {
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-yellow-500 mr-3" />
               <div>
-                <p className="text-2xl font-bold">{alertStats.unacknowledged}</p>
+                <p className="text-2xl font-bold">{alertStats.total - alertStats.acknowledged}</p>
                 <p className="text-sm text-muted-foreground">Unacknowledged</p>
               </div>
             </div>
@@ -273,7 +161,7 @@ export default function AlertsPage() {
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-orange-500 mr-3" />
               <div>
-                <p className="text-2xl font-bold">{alertStats.warnings}</p>
+                <p className="text-2xl font-bold">{alertStats.warning}</p>
                 <p className="text-sm text-muted-foreground">Warnings</p>
               </div>
             </div>
@@ -293,22 +181,24 @@ export default function AlertsPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="type">Alert Type</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <Select value={filters.type || 'all'} onValueChange={(value) => setFilters({...filters, type: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="info">Info</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
+                  <SelectItem value="OVERSTOCK">Overstock</SelectItem>
+                  <SelectItem value="EXPIRY_WARNING">Expiry Warning</SelectItem>
+                  <SelectItem value="QUALITY_ISSUE">Quality Issue</SelectItem>
+                  <SelectItem value="EQUIPMENT_FAILURE">Equipment Failure</SelectItem>
+                  <SelectItem value="SENSOR_ALERT">Sensor Alert</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filters.acknowledged === undefined ? 'all' : filters.acknowledged ? 'acknowledged' : 'unacknowledged'} onValueChange={(value) => setFilters({...filters, acknowledged: value === 'all' ? undefined : value === 'acknowledged'})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -320,22 +210,21 @@ export default function AlertsPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <Label htmlFor="severity">Severity</Label>
+              <Select value={filters.severity || 'all'} onValueChange={(value) => setFilters({...filters, severity: value})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Priorities" />
+                  <SelectValue placeholder="All Severities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="all">All Severities</SelectItem>
+                  <SelectItem value="CRITICAL">Critical</SelectItem>
+                  <SelectItem value="WARNING">Warning</SelectItem>
+                  <SelectItem value="INFO">Info</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={fetchAlerts} className="w-full">
+              <Button onClick={refreshAlerts} className="w-full">
                 Refresh
               </Button>
             </div>
@@ -360,35 +249,35 @@ export default function AlertsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <AlertTitle className="flex items-center gap-2">
-                        {alert.title}
+                        {alert.type.replace('_', ' ')}
                         {alert.acknowledged && <Badge variant="outline" className="text-xs">Acknowledged</Badge>}
-                        {getPriorityBadge(alert.priority)}
+                        {getPriorityBadge(alert.severity.toLowerCase())}
                       </AlertTitle>
                     </div>
                     <AlertDescription className="mt-1">
-                      {alert.description}
+                      {alert.message}
                     </AlertDescription>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {alert.time}
+                        {new Date(alert.createdAt).toLocaleString()}
                       </div>
-                      {alert.equipment && (
+                      {alert.equipmentId && (
                         <div className="flex items-center gap-1">
                           <Activity className="h-3 w-3" />
-                          {alert.equipment}
+                          Equipment: {alert.equipmentId}
                         </div>
                       )}
-                      {alert.zone && (
+                      {alert.sensorId && (
                         <div className="flex items-center gap-1">
                           <Activity className="h-3 w-3" />
-                          {alert.zone}
+                          Sensor: {alert.sensorId}
                         </div>
                       )}
-                      {alert.acknowledged && alert.acknowledgedBy && (
+                      {alert.acknowledged && (
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          {alert.acknowledgedBy}
+                          Acknowledged
                         </div>
                       )}
                     </div>
@@ -426,7 +315,7 @@ export default function AlertsPage() {
                           <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                             Cancel
                           </Button>
-                          <Button onClick={() => acknowledgeAlert(alert.id)}>
+                          <Button onClick={() => handleAcknowledgeAlert(alert.id)}>
                             Acknowledge
                           </Button>
                         </div>

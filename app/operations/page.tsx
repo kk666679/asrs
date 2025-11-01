@@ -1,15 +1,21 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DataTable, FilterPanel, StatusBadge } from '@/components/shared';
+import { useOperations } from '@/lib/hooks/useOperations';
+import { useRobots } from '@/lib/hooks/useRobots';
+import { useSensors } from '@/lib/hooks/useSensors';
+import { useWebSocket } from '@/lib/websocket';
 import { 
   Bot, Thermometer, Package, MapPin, Activity, AlertTriangle, 
-  CheckCircle, Clock, Play, Pause, Square, Zap, Eye, Droplets 
+  CheckCircle, Clock, Play, Pause, Square, Zap, Eye, Droplets,
+  RefreshCw, Plus, Settings, BarChart3
 } from 'lucide-react';
 
 interface EquipmentItem {
@@ -19,7 +25,23 @@ interface EquipmentItem {
   status: 'active' | 'idle' | 'maintenance' | 'error';
   position: { x: number; y: number };
   zone: string;
-  data?: any;
+  data?: {
+    robot_commands?: Array<{
+      id: string;
+      status: string;
+      type: string;
+      createdAt: string;
+    }>;
+    sensor_readings?: Array<{
+      id: string;
+      value: number;
+      unit?: string;
+      timestamp: string;
+    }>;
+    location?: string;
+    batteryLevel?: number;
+    type?: string;
+  };
 }
 
 interface OperationMetrics {
@@ -46,83 +68,76 @@ const equipmentIcons = {
 };
 
 export default function OperationsPage() {
-  const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
-  const [metrics, setMetrics] = useState<OperationMetrics>({
-    activeRobots: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    errorCount: 0,
-    efficiency: 0,
-    throughput: 0
-  });
-  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentItem | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchOperationsData();
-    const interval = setInterval(fetchOperationsData, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchOperationsData = async () => {
-    try {
-      const [robotsRes, sensorsRes] = await Promise.all([
-        fetch('/api/robots'),
-        fetch('/api/sensors')
-      ]);
-
-      const [robotsData, sensorsData] = await Promise.all([
-        robotsRes.json(),
-        sensorsRes.json()
-      ]);
-
-      const robots = robotsData.robots || robotsData;
-      const sensors = sensorsData.sensors || sensorsData;
-
-      const equipmentData: EquipmentItem[] = [
-        ...robots.map((robot: any, index: number) => ({
-          id: robot.id,
-          name: robot.name,
-          type: 'robot' as const,
-          status: robot.status.toLowerCase(),
-          position: { x: 100 + (index * 150), y: 100 + (index % 3) * 100 },
-          zone: robot.zones?.code || 'Unknown',
-          data: robot
-        })),
-        ...sensors.map((sensor: any, index: number) => ({
-          id: sensor.id,
-          name: sensor.name,
-          type: 'sensor' as const,
-          status: sensor.status.toLowerCase(),
-          position: { x: 200 + (index * 120), y: 200 + (index % 4) * 80 },
-          zone: sensor.zones?.code || 'Unknown',
-          data: sensor
-        }))
-      ];
-
-      setEquipment(equipmentData);
-
-      const activeRobots = robots.filter((r: any) => r.status === 'WORKING').length;
-      const totalTasks = robots.reduce((sum: number, r: any) => sum + (r.commands?.length || 0), 0);
-      const completedTasks = robots.reduce((sum: number, r: any) => 
-        sum + (r.commands?.filter((c: any) => c.status === 'COMPLETED').length || 0), 0);
-      const errorCount = robots.filter((r: any) => r.status === 'ERROR').length;
-
-      setMetrics({
-        activeRobots,
-        totalTasks,
-        completedTasks,
-        errorCount,
-        efficiency: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-        throughput: Math.round(completedTasks / 24)
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch operations data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const router = useRouter();
+  const {
+    operations,
+    filteredOperations,
+    operationsStats: operationStats,
+    isLoading,
+    error,
+    filters,
+    setFilters,
+    clearFilters,
+    createOperation,
+    updateOperation,
+    refreshOperations
+  } = useOperations();
+  
+  const { robots, robotStats } = useRobots();
+  const { sensors } = useSensors();
+  const { isConnected } = useWebSocket();
+  
+  const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentItem | null>(null);
+  
+  const navigateToRobots = () => {
+    router.push('/robots');
   };
+  
+  const navigateToSensors = () => {
+    router.push('/sensors');
+  };
+  
+  const navigateToAnalytics = () => {
+    router.push('/analytics');
+  };
+  
+  const navigateToMaintenance = () => {
+    router.push('/maintenance');
+  };
+  
+  const createNewOperation = () => {
+    router.push('/operations/create');
+  };
+
+  const equipment: EquipmentItem[] = React.useMemo(() => [
+    ...robots.map((robot: any, index: number) => ({
+      id: robot.id,
+      name: robot.name,
+      type: 'robot' as const,
+      status: robot.status.toLowerCase(),
+      position: { x: 100 + (index * 150), y: 100 + (index % 3) * 100 },
+      zone: robot.zoneId || 'Unknown',
+      data: robot
+    })),
+    ...sensors.map((sensor: any, index: number) => ({
+      id: sensor.id,
+      name: sensor.name,
+      type: 'sensor' as const,
+      status: sensor.status.toLowerCase(),
+      position: { x: 200 + (index * 120), y: 200 + (index % 4) * 80 },
+      zone: sensor.zoneId || 'Unknown',
+      data: sensor
+    }))
+  ], [robots, sensors]);
+  
+  const metrics: OperationMetrics = React.useMemo(() => ({
+    activeRobots: robotStats.active,
+    totalTasks: operations.length,
+    completedTasks: operations.filter(op => op.status === 'COMPLETED').length,
+    errorCount: operations.filter(op => op.status === 'FAILED').length,
+    efficiency: operations.length > 0 ? Math.round((operations.filter(op => op.status === 'COMPLETED').length / operations.length) * 100) : 0,
+    throughput: Math.round(operations.filter(op => op.status === 'COMPLETED').length / 24)
+  }), [operations, robotStats]);
 
   const getEquipmentIcon = (type: string) => {
     const IconComponent = equipmentIcons[type as keyof typeof equipmentIcons] || Activity;
@@ -135,24 +150,47 @@ export default function OperationsPage() {
     </Badge>
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading operations dashboard...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading operations dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Operations Control Center</h1>
-          <p className="text-muted-foreground">Real-time warehouse operations monitoring and control</p>
+          <p className="text-muted-foreground">
+            Real-time warehouse operations monitoring and control
+            {isConnected && <span className="ml-2 text-green-600">• Live</span>}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={fetchOperationsData}>Refresh</Button>
-          <Button variant="outline">Emergency Stop All</Button>
+          <Button onClick={refreshOperations} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={createNewOperation}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Operation
+          </Button>
+          <Button onClick={navigateToAnalytics} variant="outline">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </Button>
         </div>
       </div>
 
@@ -210,9 +248,9 @@ export default function OperationsPage() {
       <Tabs defaultValue="map" className="space-y-4">
         <TabsList>
           <TabsTrigger value="map">Equipment Map</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="robots">Robot Control</TabsTrigger>
           <TabsTrigger value="sensors">Sensor Monitor</TabsTrigger>
-          <TabsTrigger value="tasks">Task Queue</TabsTrigger>
         </TabsList>
 
         <TabsContent value="map">
@@ -331,14 +369,8 @@ export default function OperationsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(robot.status)}
-                      <Button size="sm" variant="outline">
-                        <Play className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Pause className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="destructive">
-                        <Square className="h-4 w-4" />
+                      <Button size="sm" variant="outline" onClick={navigateToRobots}>
+                        <Settings className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -361,7 +393,7 @@ export default function OperationsPage() {
                                      sensor.data?.type === 'HUMIDITY' ? Droplets :
                                      sensor.data?.type === 'PRESSURE' ? Zap : Activity;
                   return (
-                    <Card key={sensor.id}>
+                    <Card key={sensor.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={navigateToSensors}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <IconComponent className="h-4 w-4" />
@@ -373,12 +405,6 @@ export default function OperationsPage() {
                           <div className="flex justify-between">
                             <span className="text-sm">Status:</span>
                             {getStatusBadge(sensor.status)}
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm">Reading:</span>
-                            <span className="font-medium">
-                              {sensor.data?.sensor_readings?.[0]?.value || 'N/A'} {sensor.data?.sensor_readings?.[0]?.unit || ''}
-                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm">Zone:</span>
@@ -394,47 +420,60 @@ export default function OperationsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks">
+        <TabsContent value="operations">
           <Card>
             <CardHeader>
-              <CardTitle>Task Queue Management</CardTitle>
-              <CardDescription>Monitor and manage active tasks</CardDescription>
+              <CardTitle>Active Operations</CardTitle>
+              <CardDescription>Monitor and manage warehouse operations</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {equipment
-                  .filter(e => e.type === 'robot' && e.data?.robot_commands?.length > 0)
-                  .flatMap(robot =>
-                    robot.data.robot_commands.map((command: any) => (
-                      <div key={command.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-full ${
-                            command.status === 'COMPLETED' ? 'bg-green-500' :
-                            command.status === 'EXECUTING' ? 'bg-blue-500' :
-                            command.status === 'FAILED' ? 'bg-red-500' : 'bg-yellow-500'
-                          }`}>
-                            {command.status === 'COMPLETED' ? <CheckCircle className="h-4 w-4 text-white" /> :
-                             command.status === 'EXECUTING' ? <Play className="h-4 w-4 text-white" /> :
-                             command.status === 'FAILED' ? <AlertTriangle className="h-4 w-4 text-white" /> :
-                             <Clock className="h-4 w-4 text-white" />}
-                          </div>
-                          <div>
-                            <h3 className="font-medium">{command.type}</h3>
-                            <p className="text-sm text-muted-foreground">Robot: {robot.name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={command.priority === 'URGENT' ? 'destructive' : 'secondary'}>
-                            {command.priority}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(command.createdAt).toLocaleTimeString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-              </div>
+              <DataTable
+                data={filteredOperations}
+                columns={[
+                  {
+                    key: 'type' as const,
+                    header: 'Type',
+                    render: (value: string) => (
+                      <Badge variant="outline">{value}</Badge>
+                    )
+                  },
+                  {
+                    key: 'status' as const,
+                    header: 'Status',
+                    render: (value: string) => (
+                      <StatusBadge status={value.toLowerCase() as any} />
+                    )
+                  },
+                  {
+                    key: 'priority' as const,
+                    header: 'Priority',
+                    render: (value: string) => (
+                      <Badge variant={value === 'URGENT' ? 'destructive' : 'secondary'}>
+                        {value}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'quantity' as const,
+                    header: 'Quantity'
+                  },
+                  {
+                    key: 'sourceLocation' as const,
+                    header: 'Source'
+                  },
+                  {
+                    key: 'destinationLocation' as const,
+                    header: 'Destination'
+                  },
+                  {
+                    key: 'createdAt' as const,
+                    header: 'Created',
+                    render: (value: string) => new Date(value).toLocaleString()
+                  }
+                ]}
+                loading={isLoading}
+                onRowClick={(operation) => router.push(`/operations/${operation.id}`)}
+              />
             </CardContent>
           </Card>
         </TabsContent>

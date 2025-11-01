@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, Plus, Edit, Trash2, Warehouse, Building2, Grid3X3, Package } from 'lucide-react';
+import { AlertCircle, Plus, Edit, Trash2, Warehouse, Building2, Grid3X3, Package, Layout, Map, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface StorageEntity {
@@ -36,6 +36,10 @@ interface StorageEntity {
   rack?: {
     code: string;
     level: number;
+    position: {
+      row: number;
+      column: number;
+    };
   };
   status?: string;
   active?: boolean;
@@ -89,6 +93,282 @@ interface StorageData {
   };
 }
 
+interface RackingLayoutProps {
+  racks: StorageEntity[];
+  bins: StorageEntity[];
+  onBinClick?: (bin: StorageEntity) => void;
+}
+
+interface BinVisual {
+  id: string;
+  code: string;
+  utilization: number;
+  status: string;
+  capacity: number;
+  occupied: number;
+  position: {
+    row: number;
+    column: number;
+    level: number;
+  };
+}
+
+function RackingLayout({ racks, bins, onBinClick }: RackingLayoutProps) {
+  const [zoom, setZoom] = useState(1);
+  const [selectedRack, setSelectedRack] = useState<string | null>(null);
+  const [layoutView, setLayoutView] = useState<'2d' | '3d'>('2d');
+
+  // Group bins by rack
+  const binsByRack = bins.reduce((acc, bin) => {
+    const rackCode = bin.rack?.code || 'unknown';
+    if (!acc[rackCode]) {
+      acc[rackCode] = [];
+    }
+    acc[rackCode].push(bin);
+    return acc;
+  }, {} as Record<string, StorageEntity[]>);
+
+  // Get bins for selected rack or all racks
+  const displayBins = selectedRack ? binsByRack[selectedRack] || [] : bins;
+
+  // Find max dimensions for grid layout
+  const maxRow = Math.max(...displayBins.map(bin => bin.rack?.position?.row || 0));
+  const maxColumn = Math.max(...displayBins.map(bin => bin.rack?.position?.column || 0));
+  const maxLevel = Math.max(...displayBins.map(bin => bin.rack?.level || 0));
+
+  const getBinColor = (utilization: number, status: string) => {
+    if (status !== 'ACTIVE') return 'bg-gray-300';
+    if (utilization >= 90) return 'bg-red-500';
+    if (utilization >= 70) return 'bg-yellow-500';
+    if (utilization >= 50) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
+  const getBinTooltip = (bin: StorageEntity) => {
+    return `Code: ${bin.code}\nUtilization: ${bin.utilization}%\nCapacity: ${bin.capacity}\nOccupied: ${bin.occupied}\nStatus: ${bin.status}`;
+  };
+
+  const render2DLayout = () => {
+    const grid = [];
+
+    for (let level = maxLevel; level >= 1; level--) {
+      const levelBins = displayBins.filter(bin => bin.rack?.level === level);
+
+      if (levelBins.length === 0) continue;
+
+      grid.push(
+        <div key={`level-${level}`} className="mb-6">
+          <h4 className="text-sm font-medium mb-2">Level {level}</h4>
+          <div
+            className="grid gap-1 p-4 bg-gray-100 rounded-lg border"
+            style={{
+              gridTemplateColumns: `repeat(${maxColumn}, minmax(0, 1fr))`,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left'
+            }}
+          >
+            {Array.from({ length: maxRow * maxColumn }).map((_, index) => {
+              const row = Math.floor(index / maxColumn) + 1;
+              const column = (index % maxColumn) + 1;
+              const bin = levelBins.find(b =>
+                b.rack?.position?.row === row && b.rack?.position?.column === column
+              );
+
+              return (
+                <div
+                  key={`${level}-${row}-${column}`}
+                  className={`
+                    aspect-square border rounded cursor-pointer transition-all duration-200
+                    ${bin
+                      ? `${getBinColor(bin.utilization, bin.status || 'ACTIVE')} text-white font-medium text-xs flex items-center justify-center hover:opacity-80`
+                      : 'bg-white border-dashed'
+                    }
+                  `}
+                  title={bin ? getBinTooltip(bin) : `Empty slot - Level ${level}, Row ${row}, Column ${column}`}
+                  onClick={() => bin && onBinClick?.(bin)}
+                >
+                  {bin && (
+                    <div className="text-center p-1">
+                      <div className="font-bold">{bin.code.split('-').pop()}</div>
+                      <div className="text-xs opacity-90">{bin.utilization}%</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return grid;
+  };
+
+  const render3DLayout = () => {
+    return (
+      <div className="space-y-4">
+        {racks.map(rack => {
+          const rackBins = binsByRack[rack.code] || [];
+          const levels = [...new Set(rackBins.map(bin => bin.rack?.level))].sort();
+
+          return (
+            <div key={rack.id} className="border rounded-lg p-4 bg-white">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-medium">{rack.code}</h4>
+                <Badge variant="secondary">
+                  {rackBins.length} bins · {rack.utilization}% utilized
+                </Badge>
+              </div>
+
+              <div className="flex space-x-2 overflow-x-auto pb-2">
+                {levels.map(level => {
+                  const levelBins = rackBins.filter(bin => bin.rack?.level === level);
+
+                  return (
+                    <div key={level} className="flex-shrink-0">
+                      <div className="text-xs text-center mb-1">Level {level}</div>
+                      <div className="bg-gray-50 p-2 rounded border">
+                        <div className="grid grid-cols-2 gap-1">
+                          {levelBins.map(bin => (
+                            <div
+                              key={bin.id}
+                              className={`
+                                w-12 h-12 border rounded cursor-pointer transition-all
+                                ${getBinColor(bin.utilization, bin.status || 'ACTIVE')}
+                                text-white text-xs flex items-center justify-center hover:opacity-80
+                              `}
+                              title={getBinTooltip(bin)}
+                              onClick={() => onBinClick?.(bin)}
+                            >
+                              <div className="text-center">
+                                <div className="font-bold">{bin.utilization}%</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Racking Layout</CardTitle>
+            <CardDescription>
+              Visual representation of storage racks and bins
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={selectedRack || 'all'} onValueChange={(value) => setSelectedRack(value === 'all' ? null : value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All Racks" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Racks</SelectItem>
+                {racks.map(rack => (
+                  <SelectItem key={rack.id} value={rack.code}>
+                    {rack.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex border rounded-md">
+              <Button
+                variant={layoutView === '2d' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setLayoutView('2d')}
+                className="px-3"
+              >
+                <Map className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={layoutView === '3d' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setLayoutView('3d')}
+                className="px-3"
+              >
+                <Layout className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex border rounded-md">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+                className="px-3"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setZoom(1)}
+                className="px-3"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setZoom(prev => Math.min(2, prev + 0.1))}
+                className="px-3"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-green-500 rounded"></div>
+            <span className="text-xs">Low (&lt;50%)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+            <span className="text-xs">Medium (50-70%)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+            <span className="text-xs">High (70-90%)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-red-500 rounded"></div>
+            <span className="text-xs">Critical (&gt;90%)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-gray-300 rounded"></div>
+            <span className="text-xs">Inactive</span>
+          </div>
+        </div>
+
+        <div className="border rounded-lg p-4 bg-gray-50 max-h-96 overflow-auto">
+          {layoutView === '2d' ? render2DLayout() : render3DLayout()}
+        </div>
+
+        {displayBins.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No bins found for the selected rack
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function StorageManagementPage() {
   const [data, setData] = useState<StorageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +377,8 @@ export default function StorageManagementPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<StorageEntity | null>(null);
+  const [selectedBin, setSelectedBin] = useState<StorageEntity | null>(null);
+  const [binDialogOpen, setBinDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     type: '',
     code: '',
@@ -108,6 +390,9 @@ export default function StorageManagementPage() {
     capacity: '',
     weightLimit: '',
     barcode: '',
+    row: '',
+    column: '',
+    level: '',
   });
 
   useEffect(() => {
@@ -156,6 +441,9 @@ export default function StorageManagementPage() {
         capacity: '',
         weightLimit: '',
         barcode: '',
+        row: '',
+        column: '',
+        level: '',
       });
       fetchStorageData();
     } catch (err) {
@@ -218,8 +506,16 @@ export default function StorageManagementPage() {
       capacity: entity.capacity?.toString() || '',
       weightLimit: '',
       barcode: '',
+      row: entity.rack?.position?.row?.toString() || '',
+      column: entity.rack?.position?.column?.toString() || '',
+      level: entity.rack?.level?.toString() || '',
     });
     setEditDialogOpen(true);
+  };
+
+  const handleBinClick = (bin: StorageEntity) => {
+    setSelectedBin(bin);
+    setBinDialogOpen(true);
   };
 
   if (loading) {
@@ -263,7 +559,7 @@ export default function StorageManagementPage() {
               Create Entity
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Storage Entity</DialogTitle>
               <DialogDescription>
@@ -309,6 +605,7 @@ export default function StorageManagementPage() {
                   className="col-span-3"
                 />
               </div>
+
               {formData.type === 'zone' && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="warehouseId" className="text-right">
@@ -322,82 +619,6 @@ export default function StorageManagementPage() {
                   />
                 </div>
               )}
-              {formData.type === 'aisle' && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="zoneId" className="text-right">
-                    Zone ID
-                  </Label>
-                  <Input
-                    id="zoneId"
-                    value={formData.zoneId}
-                    onChange={(e) => setFormData({ ...formData, zoneId: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-              )}
-              {formData.type === 'rack' && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="aisleId" className="text-right">
-                    Aisle ID
-                  </Label>
-                  <Input
-                    id="aisleId"
-                    value={formData.aisleId}
-                    onChange={(e) => setFormData({ ...formData, aisleId: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-              )}
-              {formData.type === 'bin' && (
-                <>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="rackId" className="text-right">
-                      Rack ID
-                    </Label>
-                    <Input
-                      id="rackId"
-                      value={formData.rackId}
-                      onChange={(e) => setFormData({ ...formData, rackId: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="capacity" className="text-right">
-                      Capacity
-                    </Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      value={formData.capacity}
-                      onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="weightLimit" className="text-right">
-                      Weight Limit
-                    </Label>
-                    <Input
-                      id="weightLimit"
-                      type="number"
-                      value={formData.weightLimit}
-                      onChange={(e) => setFormData({ ...formData, weightLimit: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="barcode" className="text-right">
-                      Barcode
-                    </Label>
-                    <Input
-                      id="barcode"
-                      value={formData.barcode}
-                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                </>
-              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -409,59 +630,8 @@ export default function StorageManagementPage() {
         </Dialog>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Utilization</CardTitle>
-            <Warehouse className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.overallUtilization}%</div>
-            <Progress value={data.summary.overallUtilization} className="mt-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Capacity</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.totalCapacity.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {data.summary.totalOccupied.toLocaleString()} occupied
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Zones</CardTitle>
-            <Grid3X3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.activeStorageTypes}</div>
-            <p className="text-xs text-muted-foreground">
-              Storage zones
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Bins</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.activeBins}</div>
-            <p className="text-xs text-muted-foreground">
-              Storage locations
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="zones">Zones</TabsTrigger>
           <TabsTrigger value="aisles">Aisles</TabsTrigger>
@@ -469,72 +639,62 @@ export default function StorageManagementPage() {
           <TabsTrigger value="bins">Bins</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <TabsContent value="overview">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Storage Hierarchy</CardTitle>
-                <CardDescription>Current storage structure overview</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Capacity</CardTitle>
+                <Warehouse className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Zones:</span>
-                    <Badge variant="secondary">{data.storageTypes.data.length}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Aisles:</span>
-                    <Badge variant="secondary">{data.storageSections.data.length}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Racks:</span>
-                    <Badge variant="secondary">{data.storageUnits.data.length}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Bins:</span>
-                    <Badge variant="secondary">{data.storageBins.data.length}</Badge>
-                  </div>
-                </div>
+                <div className="text-2xl font-bold">{data.summary.totalCapacity.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  {data.summary.totalOccupied.toLocaleString()} occupied
+                </p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle>Utilization by Level</CardTitle>
-                <CardDescription>Storage utilization breakdown</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Overall Utilization</CardTitle>
+                <Building2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm">
-                      <span>Zones</span>
-                      <span>{Math.round(data.storageTypes.data.reduce((sum, z) => sum + z.utilization, 0) / Math.max(data.storageTypes.data.length, 1))}%</span>
-                    </div>
-                    <Progress value={data.storageTypes.data.reduce((sum, z) => sum + z.utilization, 0) / Math.max(data.storageTypes.data.length, 1)} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm">
-                      <span>Aisles</span>
-                      <span>{Math.round(data.storageSections.data.reduce((sum, a) => sum + a.utilization, 0) / Math.max(data.storageSections.data.length, 1))}%</span>
-                    </div>
-                    <Progress value={data.storageSections.data.reduce((sum, a) => sum + a.utilization, 0) / Math.max(data.storageSections.data.length, 1)} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm">
-                      <span>Racks</span>
-                      <span>{Math.round(data.storageUnits.data.reduce((sum, r) => sum + r.utilization, 0) / Math.max(data.storageUnits.data.length, 1))}%</span>
-                    </div>
-                    <Progress value={data.storageUnits.data.reduce((sum, r) => sum + r.utilization, 0) / Math.max(data.storageUnits.data.length, 1)} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm">
-                      <span>Bins</span>
-                      <span>{Math.round(data.storageBins.data.reduce((sum, b) => sum + b.utilization, 0) / Math.max(data.storageBins.data.length, 1))}%</span>
-                    </div>
-                    <Progress value={data.storageBins.data.reduce((sum, b) => sum + b.utilization, 0) / Math.max(data.storageBins.data.length, 1)} />
-                  </div>
-                </div>
+                <div className="text-2xl font-bold">{data.summary.overallUtilization}%</div>
+                <Progress value={data.summary.overallUtilization} className="mt-2" />
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Zones</CardTitle>
+                <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data.summary.activeSections}</div>
+                <p className="text-xs text-muted-foreground">
+                  Out of {data.storageSections.data.length} total
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Bins</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data.summary.activeBins}</div>
+                <p className="text-xs text-muted-foreground">
+                  Out of {data.storageBins.data.length} total
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-6">
+            <RackingLayout
+              racks={data.storageUnits.data}
+              bins={data.storageBins.data}
+              onBinClick={handleBinClick}
+            />
           </div>
         </TabsContent>
 
@@ -561,7 +721,7 @@ export default function StorageManagementPage() {
                     <TableRow key={zone.id}>
                       <TableCell className="font-medium">{zone.code}</TableCell>
                       <TableCell>{zone.name}</TableCell>
-                      <TableCell>{zone.warehouse?.name}</TableCell>
+                      <TableCell>{zone.warehouse?.code}</TableCell>
                       <TableCell>{zone.capacity.toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -606,7 +766,7 @@ export default function StorageManagementPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Code</TableHead>
-                    <TableHead>Number</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Zone</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Utilization</TableHead>
@@ -617,8 +777,8 @@ export default function StorageManagementPage() {
                   {data.storageSections.data.map((aisle) => (
                     <TableRow key={aisle.id}>
                       <TableCell className="font-medium">{aisle.code}</TableCell>
-                      <TableCell>{aisle.aisle?.number}</TableCell>
-                      <TableCell>{aisle.zone?.name}</TableCell>
+                      <TableCell>{aisle.name}</TableCell>
+                      <TableCell>{aisle.zone?.code}</TableCell>
                       <TableCell>{aisle.capacity.toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -831,3 +991,4 @@ export default function StorageManagementPage() {
     </div>
   );
 }
+

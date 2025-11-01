@@ -66,59 +66,55 @@ const data = {
       isActive: true,
     },
     {
-      title: "Core ASRS",
+      title: "Robotics & Automation",
       url: "#",
-      icon: Warehouse,
+      icon: Bot,
       items: [
         {
-          title: "Fleet Overview",
-          url: "/dashboard",
+          title: "AMR Fleet Management",
+          url: "/autonomous-mobile-robots",
         },
         {
-          title: "Robotics Control",
+          title: "AMR Material Handling",
+          url: "/autonomous-mobile-robots/material-handling",
+        },
+        {
+          title: "Robot Control",
           url: "/robots",
         },
         {
-          title: "Autonomous Mobile Robots",
-          url: "/Autonomous-Mobile-Robots",
-        },
-        {
-          title: "Operations Center",
-          url: "/operations",
+          title: "Equipment Status",
+          url: "/equipment",
         },
         {
           title: "IoT Sensors",
           url: "/sensors",
         },
         {
-          title: "Equipment",
-          url: "/equipment",
-        },
-        {
-          title: "Alerts",
-          url: "/alerts",
-        },
-        {
           title: "Maintenance",
           url: "/maintenance",
+        },
+        {
+          title: "System Alerts",
+          url: "/alerts",
         },
       ],
     },
     {
-      title: "Inventory Management",
+      title: "Inventory & Products",
       url: "#",
       icon: Package,
       items: [
         {
-          title: "Items & Products",
+          title: "Items Management",
           url: "/items",
         },
         {
-          title: "Products",
+          title: "Products Catalog",
           url: "/products",
         },
         {
-          title: "Inventory",
+          title: "Inventory Overview",
           url: "/inventory",
         },
         {
@@ -126,95 +122,106 @@ const data = {
           url: "/suppliers",
         },
         {
-          title: "Barcode/RFID",
+          title: "Identification Systems",
           url: "#",
-          icon: ScanLine,
           items: [
             {
               title: "Barcode Scanner",
               url: "/barcode-scanner",
             },
             {
-              title: "Generate Barcodes",
-              url: "/api/barcodes/generate",
+              title: "RFID Management",
+              url: "/rfid",
             },
             {
-              title: "Lookup Barcodes",
-              url: "/api/barcodes/lookup",
+              title: "QR Codes",
+              url: "/qr",
             },
           ],
         },
       ],
     },
     {
-      title: "EWM Modules",
+      title: "Warehouse Operations",
       url: "#",
-      icon: Boxes,
+      icon: Warehouse,
       items: [
+        {
+          title: "Operations Center",
+          url: "/operations",
+        },
         {
           title: "Storage Management",
           url: "/storage-management",
         },
         {
-          title: "Handling Units",
-          url: "/handling-units",
-        },
-        {
-          title: "Yard Management",
-          url: "/yard-management",
-        },
-        {
-          title: "Slotting & Replenishment",
+          title: "Locations & Zones",
           url: "#",
-          icon: Target,
           items: [
             {
-              title: "Slotting Overview",
+              title: "Locations",
+              url: "/locations",
+            },
+            {
+              title: "Zones",
+              url: "/zones",
+            },
+            {
+              title: "Racks",
+              url: "/racks",
+            },
+          ],
+        },
+        {
+          title: "Material Handling",
+          url: "#",
+          items: [
+            {
+              title: "Handling Units",
+              url: "/handling-units",
+            },
+            {
+              title: "Putaway Operations",
+              url: "/operations/putaway",
+            },
+            {
+              title: "Movements",
+              url: "/movements",
+            },
+          ],
+        },
+        {
+          title: "Advanced Operations",
+          url: "#",
+          items: [
+            {
+              title: "Slotting Optimization",
               url: "/slotting",
             },
             {
-              title: "Replenishment Tasks",
-              url: "/slotting/replenishment",
-            },
-          ],
-        },
-        {
-          title: "Wave Management",
-          url: "/waves",
-        },
-        {
-          title: "Cross-Docking",
-          url: "/cross-docking",
-        },
-        {
-          title: "Labor Management",
-          url: "#",
-          icon: Users,
-          items: [
-            {
-              title: "Labor Standards",
-              url: "/labor-management/standards",
+              title: "Wave Management",
+              url: "/waves",
             },
             {
-              title: "Performance Tracking",
-              url: "/labor-management/performance",
+              title: "Cross-Docking",
+              url: "/cross-docking",
+            },
+            {
+              title: "Yard Management",
+              url: "/yard-management",
             },
           ],
-        },
-        {
-          title: "Quality Inspection",
-          url: "/quality-inspection",
         },
       ],
     },
     {
-      title: "Operations",
+      title: "Logistics & Shipping",
       url: "#",
       icon: Truck,
       items: [
         {
-          title: "Putaway",
-          url: "/operations/putaway",
+          title: "Logistics Hub",
+          url: "/logistics",
         },
         {
           title: "Shipments",
@@ -224,21 +231,28 @@ const data = {
           title: "Transactions",
           url: "/transactions",
         },
+      ],
+    },
+    {
+      title: "Quality & Compliance",
+      url: "#",
+      icon: CheckCircle,
+      items: [
         {
-          title: "Movements",
-          url: "/movements",
+          title: "Quality Inspection",
+          url: "/quality-inspection",
         },
         {
-          title: "Locations",
-          url: "/locations",
+          title: "Labor Management",
+          url: "/labor-management",
         },
         {
-          title: "Zones",
-          url: "/zones",
+          title: "Halal Management",
+          url: "/halal",
         },
         {
-          title: "Racks",
-          url: "/racks",
+          title: "Halal Dashboard",
+          url: "/halal-dashboard",
         },
       ],
     },
@@ -252,23 +266,27 @@ const data = {
           url: "/analytics",
         },
         {
+          title: "Reports",
+          url: "/reports",
+        },
+        {
           title: "Demand Forecasting",
           url: "/forecasting",
+        },
+        {
+          title: "Optimization",
+          url: "/optimization",
         },
         {
           title: "Digital Twin",
           url: "/digital-twin",
         },
-        {
-          title: "Reports",
-          url: "/reports",
-        },
       ],
     },
     {
-      title: "Specialized",
+      title: "Advanced Technologies",
       url: "#",
-      icon: Shield,
+      icon: Brain,
       items: [
         {
           title: "Blockchain",
@@ -278,35 +296,23 @@ const data = {
           title: "IPFS Storage",
           url: "/ipfs",
         },
-        {
-          title: "Halal Management",
-          url: "/halal",
-        },
-        {
-          title: "Halal Dashboard",
-          url: "/halal-dashboard",
-        },
       ],
     },
     {
-      title: "Settings",
+      title: "System Settings",
       url: "#",
       icon: Settings2,
       items: [
         {
-          title: "General",
+          title: "General Settings",
+          url: "/settings",
+        },
+        {
+          title: "User Management",
           url: "#",
         },
         {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
+          title: "System Configuration",
           url: "#",
         },
       ],

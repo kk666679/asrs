@@ -55,7 +55,7 @@ export default function ZonesPage() {
 
   const fetchZones = async () => {
     try {
-      const response = await fetch('/api/zones');
+      const response = await fetch('http://localhost:3001/api/zones');
       const data = await response.json();
       setZones(data);
     } catch (error) {
@@ -68,7 +68,7 @@ export default function ZonesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/zones', {
+      const response = await fetch('http://localhost:3001/api/zones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -89,7 +89,7 @@ export default function ZonesPage() {
     if (!editingZone) return;
 
     try {
-      const response = await fetch(`/api/zones/${editingZone.id}`, {
+      const response = await fetch(`http://localhost:3001/api/zones/${editingZone.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -109,7 +109,7 @@ export default function ZonesPage() {
     if (!confirm('Are you sure you want to delete this zone?')) return;
 
     try {
-      const response = await fetch(`/api/zones/${id}`, {
+      const response = await fetch(`http://localhost:3001/api/zones/${id}`, {
         method: 'DELETE'
       });
 

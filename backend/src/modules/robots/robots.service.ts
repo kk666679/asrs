@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { RoboticsService } from '../../services/robotics';
-import { RobotTask } from '../../types';
+import { RoboticsService } from '../../../lib/services/robotics';
+import { RobotTask } from '../../../lib/types';
 
 @Injectable()
 export class RobotsService {

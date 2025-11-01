@@ -8,7 +8,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { RoboticsService } from '../../services/robotics';
+import { RoboticsService } from '../../../lib/services/robotics';
 import { RobotsService } from './robots.service';
 
 @Controller('robots')

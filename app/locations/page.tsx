@@ -1,322 +1,250 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-
-interface Bin {
-  id: string;
-  code: string;
-  capacity: number;
-  currentLoad: number;
-  weightLimit: number;
-  status: string;
-  barcode?: string;
-  rack: {
-    code: string;
-    aisle: {
-      code: string;
-      zone: {
-        code: string;
-        temperature: string;
-      };
-    };
-  };
-}
-
-interface Rack {
-  id: string;
-  code: string;
-  aisle: {
-    code: string;
-    zone: {
-      code: string;
-    };
-  };
-}
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { DataTable, FilterPanel, StatusBadge } from '@/components/shared';
+import { useLocations } from '@/lib/hooks/useLocations';
+import { useWebSocket } from '@/lib/websocket';
+import {
+  MapPin, Building, Grid, Package, RefreshCw, BarChart3, Plus,
+  TrendingUp, AlertTriangle, Search, Map
+} from 'lucide-react';
 
 export default function LocationsPage() {
-  const [bins, setBins] = useState<Bin[]>([]);
-  const [racks, setRacks] = useState<Rack[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    code: '',
-    capacity: '',
-    weightLimit: '',
-    rackId: '',
-    barcode: '',
-  });
-  const [generatingBarcode, setGeneratingBarcode] = useState(false);
+  const router = useRouter();
+  const {
+    locations,
+    filteredLocations,
+    isLoading,
+    error,
+    filters,
+    setFilters,
+    clearFilters,
+    refreshLocations
+  } = useLocations();
+  
+  const { isConnected } = useWebSocket();
 
-  useEffect(() => {
-    fetchBins();
-    fetchRacks();
-  }, []);
+  const navigateToDetail = (locationId: string) => {
+    router.push(`/locations/${locationId}`);
+  };
 
-  const fetchBins = async () => {
-    try {
-      const response = await fetch("/api/locations");
-      if (response.ok) {
-        const data = await response.json();
-        setBins(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch bins:", error);
-    } finally {
-      setLoading(false);
+  const navigateToZones = () => {
+    router.push('/zones');
+  };
+
+  const navigateToRacks = () => {
+    router.push('/racks');
+  };
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters({ [key]: value });
+  };
+
+  const filterOptions = [
+    {
+      key: 'type',
+      label: 'Location Type',
+      type: 'select' as const,
+      options: [
+        { value: 'BIN', label: 'Bin' },
+        { value: 'SHELF', label: 'Shelf' },
+        { value: 'FLOOR', label: 'Floor' },
+        { value: 'CONVEYOR', label: 'Conveyor' },
+        { value: 'DOCK', label: 'Dock' }
+      ]
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select' as const,
+      options: [
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'INACTIVE', label: 'Inactive' },
+        { value: 'MAINTENANCE', label: 'Maintenance' },
+        { value: 'BLOCKED', label: 'Blocked' }
+      ]
+    },
+    {
+      key: 'search',
+      label: 'Search',
+      type: 'text' as const,
+      placeholder: 'Search by code, name, or coordinates'
     }
-  };
+  ];
 
-  const fetchRacks = async () => {
-    try {
-      // For now, we'll need to create a racks API or fetch from existing data
-      // This is a placeholder - we'll need to implement racks fetching
-      setRacks([]);
-    } catch (error) {
-      console.error("Failed to fetch racks:", error);
+  const columns = [
+    {
+      key: 'code' as const,
+      header: 'Location Code',
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{value}</span>
+        </div>
+      )
+    },
+
+    {
+      key: 'type' as const,
+      header: 'Type',
+      render: (value: string) => (
+        <StatusBadge status={value?.toLowerCase() as any} />
+      )
+    },
+    {
+      key: 'status' as const,
+      header: 'Status',
+      render: (value: string) => (
+        <StatusBadge status={value?.toLowerCase() as any} />
+      )
+    },
+    {
+      key: 'capacity' as const,
+      header: 'Capacity'
+    },
+    {
+      key: 'currentLoad' as const,
+      header: 'Current Load'
+    },
+    {
+      key: 'coordinates' as const,
+      header: 'Coordinates',
+      render: (value: any) => value ? `${value.x}, ${value.y}` : '-'
     }
-  };
+  ];
 
-  const generateBarcode = async () => {
-    setGeneratingBarcode(true);
-    try {
-      const response = await fetch("/api/barcodes/generate", {
-        method: "POST",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setFormData(prev => ({ ...prev, barcode: data.barcode }));
-      } else {
-        alert("Failed to generate barcode");
-      }
-    } catch (error) {
-      console.error("Failed to generate barcode:", error);
-      alert("Failed to generate barcode");
-    } finally {
-      setGeneratingBarcode(false);
-    }
-  };
+  const locationStats = React.useMemo(() => ({
+    total: locations.length,
+    active: locations.filter(loc => loc.status === 'ACTIVE').length,
+    inactive: locations.filter(loc => loc.status === 'INACTIVE').length,
+    maintenance: locations.filter(loc => loc.status === 'MAINTENANCE').length,
+  }), [locations]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/locations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      if (response.ok) {
-        const newBin = await response.json();
-        setBins(prev => [...prev, newBin]);
-        setShowForm(false);
-        setFormData({
-          code: '',
-          capacity: '',
-          weightLimit: '',
-          rackId: '',
-          barcode: '',
-        });
-      } else {
-        const error = await response.json();
-        alert(error.error || "Failed to create bin");
-      }
-    } catch (error) {
-      console.error("Failed to create bin:", error);
-      alert("Failed to create bin");
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading storage locations...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading locations...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Location Management</h1>
+          <p className="text-muted-foreground">
+            Manage warehouse locations and storage hierarchy
+            {isConnected && <span className="ml-2 text-green-600">• Live</span>}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={refreshLocations} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={navigateToZones} variant="outline">
+            <Building className="h-4 w-4 mr-2" />
+            Zones
+          </Button>
+          <Button onClick={navigateToRacks} variant="outline">
+            <Grid className="h-4 w-4 mr-2" />
+            Racks
+          </Button>
+          <Button onClick={() => router.push('/analytics')} variant="outline">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Location
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">Storage Locations</h1>
+              <MapPin className="h-8 w-8 text-blue-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">{locationStats.total}</p>
+                <p className="text-sm text-muted-foreground">Total Locations</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-              >
-                Add New Bin
-              </button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-green-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">{locationStats.active}</p>
+                <p className="text-sm text-muted-foreground">Active</p>
+              </div>
             </div>
-          </div>
-        </div>
-      </header>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Search className="h-8 w-8 text-yellow-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">{locationStats.inactive}</p>
+                <p className="text-sm text-muted-foreground">Inactive</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-8 w-8 text-red-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">{locationStats.maintenance}</p>
+                <p className="text-sm text-muted-foreground">Maintenance</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
-              {bins.length === 0 ? (
-                <li className="px-6 py-8 text-center text-gray-500">
-                  No storage bins found. Set up your warehouse structure to get started.
-                </li>
-              ) : (
-                bins.map((bin) => (
-                  <li key={bin.id} className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-medium text-gray-900">Bin {bin.code}</h3>
-                            <p className="text-sm text-gray-500">
-                              Location: {bin.rack.aisle.zone.code} → {bin.rack.aisle.code} → {bin.rack.code}
-                            </p>
-                            <p className="text-sm text-gray-500">Temperature Zone: {bin.rack.aisle.zone.temperature}</p>
-                          </div>
-                          <div className="ml-4 flex flex-col items-end">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              bin.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                              bin.status === 'INACTIVE' ? 'bg-gray-100 text-gray-800' :
-                              bin.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {bin.status}
-                            </span>
-                            <span className="text-sm text-gray-500 mt-1">
-                              {bin.currentLoad}/{bin.capacity} units
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              Weight: {bin.weightLimit}kg limit
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="ml-4 flex items-center space-x-2">
-                        <button className="text-green-600 hover:text-green-900 text-sm font-medium">
-                          View Details
-                        </button>
-                        <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <FilterPanel
+            filters={filterOptions}
+            values={filters}
+            onChange={handleFilterChange}
+            onClear={clearFilters}
+          />
         </div>
-      </main>
-
-      {showForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" onClick={() => setShowForm(false)}>
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Bin</h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Bin Code *</label>
-                  <input
-                    type="text"
-                    name="code"
-                    value={formData.code}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Capacity *</label>
-                  <input
-                    type="number"
-                    name="capacity"
-                    value={formData.capacity}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Weight Limit (kg) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="weightLimit"
-                    value={formData.weightLimit}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Rack *</label>
-                  <select
-                    name="rackId"
-                    value={formData.rackId}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  >
-                    <option value="">Select a rack</option>
-                    {racks.map(rack => (
-                      <option key={rack.id} value={rack.id}>
-                        {rack.aisle.zone.code} → {rack.aisle.code} → {rack.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Barcode</label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      name="barcode"
-                      value={formData.barcode}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                      placeholder="Leave empty to generate automatically"
-                    />
-                    <button
-                      type="button"
-                      onClick={generateBarcode}
-                      disabled={generatingBarcode}
-                      className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {generatingBarcode ? 'Generating...' : 'Generate'}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex space-x-4">
-                  <button
-                    type="submit"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                  >
-                    Save Bin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+        
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Location Directory</CardTitle>
+              <CardDescription>
+                {filteredLocations.length} of {locations.length} locations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={filteredLocations}
+                columns={columns}
+                loading={isLoading}
+                onRowClick={(location) => navigateToDetail(location.id)}
+                searchable={false}
+              />
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </div>
     </div>
   );
 }

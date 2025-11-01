@@ -1,0 +1,106 @@
+[
+  {
+    "file": "app/page.tsx",
+    "component": "page",
+    "buttons": [
+      {
+        "text": "dashboard",
+        "type": "button",
+        "action": "dashboard",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "sensors",
+        "type": "button",
+        "action": "sensors",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "equipment",
+        "type": "button",
+        "action": "equipment",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "alerts",
+        "type": "button",
+        "action": "alerts",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "maintenance",
+        "type": "button",
+        "action": "maintenance",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "reports",
+        "type": "button",
+        "action": "reports",
+        "enabled": true,
+        "issues": []
+      }
+    ]
+  },
+  {
+    "file": "app/inventory/page.tsx",
+    "component": "page",
+    "buttons": [
+      {
+        "text": "items",
+        "type": "button",
+        "action": "items",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "products",
+        "type": "button",
+        "action": "products",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "halal",
+        "type": "button",
+        "action": "halal",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "suppliers",
+        "type": "button",
+        "action": "suppliers",
+        "enabled": true,
+        "issues": []
+      },
+      {
+        "text": "analytics",
+        "type": "button",
+        "action": "analytics",
+        "enabled": true,
+        "issues": []
+      }
+    ]
+  },
+  {
+    "file": "app/autonomous-mobile-robots/page.tsx",
+    "component": "page",
+    "buttons": []
+  },
+  {
+    "file": "app/autonomous-mobile-robots/material-handling/page.tsx",
+    "component": "page",
+    "buttons": []
+  },
+  {
+    "file": "components/app-sidebar.tsx",
+    "component": "app-sidebar",
+    "buttons": []
+  }
+]

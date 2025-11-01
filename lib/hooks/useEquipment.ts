@@ -1,92 +1,143 @@
-import { useEffect } from 'react';
-import { useEquipmentStore } from '@/lib/stores/equipmentStore';
-import { api } from '@/lib/api';
-import { useRealtimeUpdates } from './useWebSocket';
+import React from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api-client';
+import { useEquipmentStore } from '@/lib/stores/equipment';
 import { Equipment } from '@/lib/types';
+import { equipmentToast } from '@/lib/toast';
 
+// API functions (these would typically be in a separate API file)
+const fetchEquipment = async (): Promise<Equipment[]> => {
+  return (apiClient as any).equipment.getAll() as Promise<Equipment[]>;
+};
+
+const createEquipment = async (equipment: Omit<Equipment, 'id'>): Promise<Equipment> => {
+  return (apiClient as any).equipment.create(equipment) as Promise<Equipment>;
+};
+
+const updateEquipment = async (id: string, updates: Partial<Equipment>): Promise<Equipment> => {
+  return (apiClient as any).equipment.update(id, updates) as Promise<Equipment>;
+};
+
+const deleteEquipment = async (id: string): Promise<void> => {
+  return (apiClient as any).equipment.delete(id) as Promise<void>;
+};
+
+// Custom hook
 export const useEquipment = () => {
+  const queryClient = useQueryClient();
   const store = useEquipmentStore();
-  const { updates, isConnected } = useRealtimeUpdates();
 
-  // Handle real-time updates
-  useEffect(() => {
-    if (!isConnected) return;
+  // Query for fetching equipment
+  const {
+    data: equipment,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: fetchEquipment,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    updates.forEach((update) => {
-      if (update.type === 'EQUIPMENT_STATUS') {
-        const equipmentUpdate = update.data as Equipment;
-        store.updateEquipment(equipmentUpdate.id, equipmentUpdate);
-      }
-    });
-  }, [updates, isConnected, store]);
-
-  const fetchEquipment = async (params?: any) => {
-    try {
-      store.setLoading(true);
-      store.setError(null);
-
-      const response = await api.equipment.getAll(params);
-      store.setEquipment(response.data);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch equipment';
-      store.setError(message);
-    } finally {
-      store.setLoading(false);
+  // Update store when data changes
+  React.useEffect(() => {
+    if (equipment) {
+      store.setEquipment(equipment);
     }
+  }, [equipment]);
+
+  // Update store when error occurs
+  React.useEffect(() => {
+    if (error) {
+      store.setError(error.message);
+    }
+  }, [error]);
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: createEquipment,
+    onSuccess: (newEquipment) => {
+      store.addEquipment(newEquipment);
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      equipmentToast.statusChanged(newEquipment.name, 'created');
+    },
+    onError: (error) => {
+      equipmentToast.errorOccurred('New Equipment', error.message);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Equipment> }) =>
+      updateEquipment(id, updates),
+    onSuccess: (updatedEquipment) => {
+      store.updateEquipment(updatedEquipment.id, updatedEquipment);
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      
+      if (updatedEquipment.status === 'maintenance') {
+        equipmentToast.maintenanceScheduled(updatedEquipment.name);
+      } else {
+        equipmentToast.statusChanged(updatedEquipment.name, updatedEquipment.status);
+      }
+    },
+    onError: (error) => {
+      equipmentToast.errorOccurred('Equipment Update', error.message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteEquipment,
+    onSuccess: (_, deletedId) => {
+      store.removeEquipment(deletedId);
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      equipmentToast.statusChanged('Equipment', 'removed');
+    },
+    onError: (error) => {
+      equipmentToast.errorOccurred('Equipment Deletion', error.message);
+    },
+  });
+
+  // Actions
+  const createEquipmentItem = (equipment: Omit<Equipment, 'id'>) => {
+    createMutation.mutate(equipment);
   };
 
-  const updateEquipmentStatus = async (id: string, status: string) => {
-    try {
-      store.setError(null);
-
-      // Optimistic update
-      const equipment = store.equipment.find(eq => eq.id === id);
-      if (equipment) {
-        store.updateEquipment(id, { status: status as any });
-      }
-
-      await api.equipment.updateStatus(id, status);
-    } catch (error) {
-      // Revert optimistic update on error
-      if (equipment) {
-        store.updateEquipment(id, { status: equipment.status });
-      }
-
-      const message = error instanceof Error ? error.message : 'Failed to update equipment status';
-      store.setError(message);
-      throw error;
-    }
+  const updateEquipmentItem = (id: string, updates: Partial<Equipment>) => {
+    updateMutation.mutate({ id, updates });
   };
 
-  const scheduleMaintenance = async (id: string, data: any) => {
-    try {
-      store.setError(null);
-      await api.equipment.scheduleMaintenance(id, data);
+  const deleteEquipmentItem = (id: string) => {
+    deleteMutation.mutate(id);
+  };
 
-      // Refresh equipment data to get updated maintenance info
-      await fetchEquipment();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to schedule maintenance';
-      store.setError(message);
-      throw error;
-    }
+  const refreshEquipment = () => {
+    refetch();
+    equipmentToast.statusChanged('Equipment Data', 'refreshed');
   };
 
   return {
-    // State
-    equipment: store.equipment,
+    // Data
+    equipment: equipment || store.equipment,
     filteredEquipment: store.filteredEquipment,
     equipmentStats: store.equipmentStats,
-    loading: store.loading,
-    error: store.error,
-    filters: store.filters,
 
-    // Actions
-    fetchEquipment,
-    updateEquipmentStatus,
-    scheduleMaintenance,
+    // State
+    isLoading: isLoading || store.loading,
+    error: error?.message || store.error,
+
+    // Filters
+    filters: store.filters,
     setFilters: store.setFilters,
     clearFilters: store.clearFilters,
-    refresh: () => fetchEquipment(),
+
+    // Actions
+    createEquipment: createEquipmentItem,
+    updateEquipment: updateEquipmentItem,
+    deleteEquipment: deleteEquipmentItem,
+    refreshEquipment,
+
+    // Mutation states
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   };
 };

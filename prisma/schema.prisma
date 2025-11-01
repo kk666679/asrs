@@ -204,6 +204,8 @@ model Zone {
   aisles        Aisle[]
   sensors       Sensor[]
   robots        Robot[]
+  bins          Bin[]
+  locations     Location[]
 
   @@map("zones")
 }
@@ -218,6 +220,7 @@ model Aisle {
 
   zone        Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   racks       Rack[]
+  locations   Location[]
 
   @@map("aisles")
 }
@@ -228,9 +231,17 @@ model Rack {
   level       Int
   orientation RackOrientation
   aisleId     String
+  positionRow Int             @default(1)
+  positionColumn Int          @default(1)
+  maxWeight   Float           @default(10000)
+  currentWeight Float         @default(0)
+  levels      Int             @default(5)
+  positionsPerLevel Int       @default(10)
+  status      String          @default("ACTIVE")
 
   aisle       Aisle    @relation(fields: [aisleId], references: [id], onDelete: Cascade)
   bins        Bin[]
+  locations   Location[]
 
   @@map("racks")
 }
@@ -244,14 +255,22 @@ model Bin {
   status      BinStatus @default(ACTIVE)
   barcode     String?    @unique
   rackId      String
+  zoneId      String
+  positionRow Int        @default(1)
+  positionColumn Int     @default(1)
+  positionLevel Int      @default(1)
+  utilization Float      @default(0)
 
   rack        Rack       @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  zone        Zone       @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   binItems    BinItem[]
   fromMovements Movement[] @relation("MovementFromBin")
   toMovements   Movement[] @relation("MovementToBin")
   sensors     Sensor[]
   handlingUnits HandlingUnit[]
   replenishments Replenishment[]
+  locations   Location[]
+  putaways    Putaway[]
 
   @@map("bins")
 }
@@ -274,6 +293,11 @@ model Item {
   shipmentItems ShipmentItem[]
   handlingUnitItems HandlingUnitItem[]
   replenishments Replenishment[]
+  batches     Batch[]
+  reorders    Reorder[]
+  inventories Inventory[]
+  putaways    Putaway[]
+  qualityInspections QualityInspection[]
 
   @@map("items")
 }
@@ -343,6 +367,8 @@ model Shipment {
   warehouse         Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   supplier          Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   shipmentItems     ShipmentItem[]
+  inboundCrossDockings CrossDocking[] @relation("InboundShipment")
+  outboundCrossDockings CrossDocking[] @relation("OutboundShipment")
 
   @@map("shipments")
 }
@@ -373,6 +399,7 @@ model User {
   robotCommands RobotCommand[]
   handlingUnits HandlingUnit[]
   replenishments Replenishment[]
+  putaways    Putaway[]
 
   @@map("users")
 }
@@ -492,6 +519,7 @@ model HalalCertificationBody {
 
   productCertifications ProductCertification[]
   ingredientCertifications Ingredient[]
+  halalProducts    HalalProduct[]
 
   @@map("halal_certification_bodies")
 }
@@ -640,4 +668,380 @@ model Replenishment {
   assignedUser    User?                @relation(fields: [assignedTo], references: [id])
 
   @@map("replenishments")
+}
+
+// Additional Models for API Routes
+
+model Location {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  type        String
+  zoneId      String?
+  aisleId     String?
+  rackId      String?
+  binId       String?
+
+  zone        Zone?   @relation(fields: [zoneId], references: [id])
+  aisle       Aisle?  @relation(fields: [aisleId], references: [id])
+  rack        Rack?   @relation(fields: [rackId], references: [id])
+  bin         Bin?    @relation(fields: [binId], references: [id])
+
+  @@map("locations")
+}
+
+model Batch {
+  id          String   @id @default(cuid())
+  batchNumber String   @unique
+  itemId      String
+  quantity    Int
+  expiryDate  DateTime?
+  createdAt   DateTime @default(now())
+  status      String   @default("ACTIVE")
+
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("batches")
+}
+
+model Reorder {
+  id              String   @id @default(cuid())
+  itemId          String
+  quantity        Int
+  priority        Priority @default(MEDIUM)
+  status          String   @default("PENDING")
+  requestedAt     DateTime @default(now())
+  approvedAt      DateTime?
+  completedAt     DateTime?
+  notes           String?
+
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("reorders")
+}
+
+model Inventory {
+  id          String   @id @default(cuid())
+  itemId      String
+  location    String
+  quantity    Int
+  minStock    Int      @default(0)
+  maxStock    Int?
+  lastCounted DateTime?
+  status      String   @default("ACTIVE")
+
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("inventory")
+}
+
+model LaborStandard {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  taskType    String
+  standardTime Float   // in minutes
+  unit        String   @default("minutes")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("labor_standards")
+}
+
+model Putaway {
+  id              String   @id @default(cuid())
+  itemId          String
+  binId           String
+  quantity        Int
+  priority        Priority @default(MEDIUM)
+  status          String   @default("PENDING")
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  assignedTo      String?
+  notes           String?
+
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  bin             Bin      @relation(fields: [binId], references: [id], onDelete: Cascade)
+  assignedUser    User?    @relation(fields: [assignedTo], references: [id])
+
+  @@map("putaways")
+}
+
+model QualityInspection {
+  id          String   @id @default(cuid())
+  itemId      String
+  batchNumber String?
+  inspector   String
+  status      String   @default("PENDING")
+  result      String?
+  notes       String?
+  inspectedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("quality_inspections")
+}
+
+model CrossDocking {
+  id              String   @id @default(cuid())
+  inboundShipmentId String
+  outboundShipmentId String
+  status          String   @default("PENDING")
+  priority        Priority @default(MEDIUM)
+  scheduledAt     DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notes           String?
+
+  inboundShipment  Shipment @relation("InboundShipment", fields: [inboundShipmentId], references: [id])
+  outboundShipment Shipment @relation("OutboundShipment", fields: [outboundShipmentId], references: [id])
+
+  @@unique([inboundShipmentId, outboundShipmentId])
+  @@map("cross_docking")
+}
+
+model Pallet {
+  id          String   @id @default(cuid())
+  palletNumber String  @unique
+  type        String
+  capacity    Int
+  currentLoad Int      @default(0)
+  location    String?
+  status      String   @default("AVAILABLE")
+  barcode     String?  @unique
+
+  @@map("pallets")
+}
+
+// Comprehensive Halal Management System
+
+enum HalalStatus {
+  CERTIFIED
+  PENDING
+  EXPIRED
+  REJECTED
+  UNDER_REVIEW
+}
+
+enum CertificationType {
+  HALAL
+  KOSHER
+  ORGANIC
+  NON_GMO
+  FAIR_TRADE
+}
+
+enum ProductCategory {
+  MEAT_POULTRY
+  DAIRY
+  BEVERAGES
+  SNACKS
+  FROZEN_FOODS
+  CANNED_GOODS
+  SPICES_SEASONINGS
+  BAKERY
+  CONFECTIONERY
+  PERSONAL_CARE
+}
+
+enum SlaughterMethod {
+  HALAL_ZABIHAH
+  MACHINE_SLAUGHTER
+  HAND_SLAUGHTER
+  NOT_APPLICABLE
+}
+
+enum StorageRequirement {
+  SEGREGATED
+  TEMPERATURE_CONTROLLED
+  HUMIDITY_CONTROLLED
+  PEST_CONTROLLED
+  STANDARD
+}
+
+model HalalProduct {
+  id                    String              @id @default(cuid())
+  sku                   String              @unique
+  name                  String
+  arabicName            String?
+  description           String?
+  category              ProductCategory
+  subcategory           String?
+  brand                 String
+  manufacturerId        String
+  supplierId            String
+  countryOfOrigin       String
+  halalStatus           HalalStatus         @default(PENDING)
+  certificationBodyId   String?
+  certificationNumber   String?
+  certificationDate     DateTime?
+  expiryDate            DateTime?
+  slaughterMethod       SlaughterMethod     @default(NOT_APPLICABLE)
+  storageRequirement    StorageRequirement  @default(STANDARD)
+  segregationRequired   Boolean             @default(false)
+  crossContamRisk       String?             // Risk assessment
+  ingredients           String              // JSON array of ingredients
+  allergens             String?             // JSON array of allergens
+  nutritionalInfo       String?             // JSON object
+  weight                Float
+  dimensions            String              // JSON: {length, width, height}
+  barcode               String?             @unique
+  qrCode                String?             @unique
+  batchTracking         Boolean             @default(true)
+  shelfLife             Int?                // Days
+  storageTemp           String?             // Temperature range
+  handlingInstructions  String?
+  complianceNotes       String?
+  auditTrail            String?             // JSON array of audit events
+  blockchainHash        String?             // Blockchain verification
+  ipfsHash              String?             // IPFS document storage
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  manufacturer          HalalManufacturer   @relation(fields: [manufacturerId], references: [id])
+  supplier              HalalSupplier       @relation(fields: [supplierId], references: [id])
+  certificationBody     HalalCertificationBody? @relation(fields: [certificationBodyId], references: [id])
+  inventoryItems        HalalInventory[]
+  auditLogs             HalalAuditLog[]
+  inspections           HalalInspection[]
+  batches               HalalBatch[]
+
+  @@map("halal_products")
+}
+
+model HalalManufacturer {
+  id                    String   @id @default(cuid())
+  name                  String
+  arabicName            String?
+  licenseNumber         String   @unique
+  address               String
+  country               String
+  contactPerson         String
+  email                 String
+  phone                 String
+  halalCertification    String   // Certification details
+  certificationExpiry   DateTime
+  auditDate             DateTime?
+  complianceScore       Int      @default(0)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  products              HalalProduct[]
+
+  @@map("halal_manufacturers")
+}
+
+model HalalSupplier {
+  id                    String   @id @default(cuid())
+  name                  String
+  arabicName            String?
+  licenseNumber         String   @unique
+  address               String
+  country               String
+  contactPerson         String
+  email                 String
+  phone                 String
+  halalCertification    String
+  certificationExpiry   DateTime
+  auditDate             DateTime?
+  complianceScore       Int      @default(0)
+  riskAssessment        String?  // JSON risk factors
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  products              HalalProduct[]
+
+  @@map("halal_suppliers")
+}
+
+model HalalInventory {
+  id                    String   @id @default(cuid())
+  productId             String
+  location              String   // Warehouse location
+  zone                  String   // Halal/Non-Halal zone
+  quantity              Int
+  batchNumber           String?
+  expiryDate            DateTime?
+  receivedDate          DateTime @default(now())
+  certificationStatus   HalalStatus @default(CERTIFIED)
+  segregationCompliant  Boolean  @default(true)
+  temperatureLog        String?  // JSON temperature history
+  lastInspection        DateTime?
+  quarantineStatus      Boolean  @default(false)
+  quarantineReason      String?
+  releaseDate           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  product               HalalProduct @relation(fields: [productId], references: [id])
+
+  @@map("halal_inventory")
+}
+
+model HalalBatch {
+  id                    String   @id @default(cuid())
+  productId             String
+  batchNumber           String   @unique
+  productionDate        DateTime
+  expiryDate            DateTime
+  quantity              Int
+  slaughterDate         DateTime?
+  slaughterLocation     String?
+  halalSupervisor       String?
+  certificationRef      String?
+  qualityGrade          String?
+  testResults           String?  // JSON test data
+  traceabilityCode      String?  @unique
+  blockchainRecord      String?
+  status                String   @default("ACTIVE")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  product               HalalProduct @relation(fields: [productId], references: [id])
+
+  @@map("halal_batches")
+}
+
+model HalalAuditLog {
+  id          String   @id @default(cuid())
+  productId   String
+  action      String   // CREATE, UPDATE, MOVE, INSPECT, etc.
+  details     String   // JSON details of the action
+  userId      String?
+  timestamp   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  location    String?
+
+  product     HalalProduct @relation(fields: [productId], references: [id])
+
+  @@map("halal_audit_logs")
+}
+
+model HalalInspection {
+  id                String   @id @default(cuid())
+  productId         String
+  inspectorName     String
+  inspectionDate    DateTime @default(now())
+  inspectionType    String   // ROUTINE, COMPLAINT, RANDOM
+  result            String   // PASS, FAIL, CONDITIONAL
+  findings          String?  // JSON inspection findings
+  correctiveActions String?  // Required actions
+  followUpDate      DateTime?
+  certificationImpact String? // Impact on certification
+  photosIPFS        String?  // IPFS hash for photos
+  documentsIPFS     String?  // IPFS hash for documents
+  blockchainRecord  String?  // Blockchain verification
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product           HalalProduct @relation(fields: [productId], references: [id])
+
+  @@map("halal_inspections")
 }

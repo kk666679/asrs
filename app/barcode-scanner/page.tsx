@@ -51,8 +51,8 @@ export default function BarcodeScannerPage() {
     switch (type) {
       case 'item':
         return (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <h3 className="text-lg font-medium text-green-800 mb-2">Item Found</h3>
+          <div className="glass-effect border border-green-500/30 rounded-md p-4">
+            <h3 className="text-lg font-medium text-green-400 mb-2">Item Found</h3>
             <div className="space-y-1">
               <p><strong>SKU:</strong> {data.sku}</p>
               <p><strong>Name:</strong> {data.name}</p>
@@ -65,8 +65,8 @@ export default function BarcodeScannerPage() {
 
       case 'bin':
         return (
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h3 className="text-lg font-medium text-blue-800 mb-2">Bin Found</h3>
+          <div className="glass-effect border border-blue-500/30 rounded-md p-4">
+            <h3 className="text-lg font-medium text-blue-400 mb-2">Bin Found</h3>
             <div className="space-y-1">
               <p><strong>Code:</strong> {data.code}</p>
               <p><strong>Location:</strong> {data.rack.aisle.zone.code} → {data.rack.aisle.code} → {data.rack.code}</p>
@@ -92,8 +92,8 @@ export default function BarcodeScannerPage() {
 
       case 'shipment':
         return (
-          <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
-            <h3 className="text-lg font-medium text-purple-800 mb-2">Shipment Found</h3>
+          <div className="glass-effect border border-purple-500/30 rounded-md p-4">
+            <h3 className="text-lg font-medium text-purple-400 mb-2">Shipment Found</h3>
             <div className="space-y-1">
               <p><strong>Shipment Number:</strong> {data.shipmentNumber}</p>
               <p><strong>Type:</strong> {data.type}</p>
@@ -122,20 +122,20 @@ export default function BarcodeScannerPage() {
 
       default:
         return (
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-            <p className="text-gray-800">Unknown data type</p>
+          <div className="glass-effect border border-muted rounded-md p-4">
+            <p className="text-muted-foreground">Unknown data type</p>
           </div>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+    <div className="min-h-screen bg-background animate-fade-in">
+      <header className="glass-effect border-b border-electricBlue/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
-            <h1 className="text-3xl font-bold text-gray-900">Barcode Scanner</h1>
-            <p className="mt-2 text-gray-600">Scan barcodes to lookup items, bins, or shipments</p>
+            <h1 className="text-3xl font-bold gradient-text">Barcode Scanner</h1>
+            <p className="mt-2 text-muted-foreground">Scan barcodes to lookup items, bins, or shipments</p>
           </div>
         </div>
       </header>
@@ -144,29 +144,29 @@ export default function BarcodeScannerPage() {
         <div className="px-4 py-6 sm:px-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Scanner Section */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Scan Barcode</h2>
+            <div className="glass-effect hover-glow transition-all duration-300 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-glow mb-4">Scan Barcode</h2>
               <BarcodeScanner onScan={handleScan} onError={handleScanError} />
               {loading && (
                 <div className="mt-4 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Scanning...</p>
+                  <p className="mt-2 text-muted-foreground">Scanning...</p>
                 </div>
               )}
             </div>
 
             {/* Results Section */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Scan Results</h2>
+            <div className="glass-effect hover-glow transition-all duration-300 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-glow mb-4">Scan Results</h2>
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-                  <p className="text-red-800">{error}</p>
+                <div className="glass-effect border border-red-500/30 rounded-md p-4 mb-4">
+                  <p className="text-red-400">{error}</p>
                 </div>
               )}
               {scannedData ? (
                 renderScannedData()
               ) : (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-muted-foreground py-8">
                   <p>Scan a barcode to see results here</p>
                 </div>
               )}

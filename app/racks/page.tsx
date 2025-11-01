@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Edit, Trash2, Archive, Grid3X3, AlertTriangle, CheckCircle } from 'lucide-react';
+import RackingMap from '@/components/RackingMap';
 
 interface Rack {
   id: string;
@@ -333,6 +334,43 @@ export default function RacksPage() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* ASRS Racking Map */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
+      >
+        <RackingMap
+          racks={racks.map(rack => ({
+            id: rack.id,
+            code: rack.code,
+            level: rack.levels,
+            utilization: Math.round((rack.currentWeight / rack.maxWeight) * 100),
+            capacity: rack.maxWeight,
+            occupied: rack.currentWeight,
+            status: rack.status,
+            position: { row: Math.floor(Math.random() * 5) + 1, column: Math.floor(Math.random() * 10) + 1 }
+          }))}
+          bins={racks.flatMap(rack => 
+            Array.from({ length: rack.levels * rack.positionsPerLevel }, (_, index) => ({
+              id: `${rack.id}-bin-${index}`,
+              code: `${rack.code}-${String(index + 1).padStart(3, '0')}`,
+              utilization: Math.floor(Math.random() * 100),
+              capacity: 100,
+              occupied: Math.floor(Math.random() * 100),
+              status: 'ACTIVE',
+              rackId: rack.id,
+              position: {
+                row: Math.floor(index / rack.positionsPerLevel) + 1,
+                column: (index % rack.positionsPerLevel) + 1,
+                level: Math.floor(index / (rack.positionsPerLevel * 5)) + 1
+              }
+            }))
+          )}
+          onBinClick={(bin) => console.log('Bin clicked:', bin)}
+        />
       </motion.div>
 
       <motion.div

@@ -1,162 +1,87 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, Building2, Phone, Mail, MapPin } from 'lucide-react';
-
-interface Supplier {
-  id: string;
-  code: string;
-  name: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  country: string;
-  halalCertified: boolean;
-  halalCertificationExpiry?: string;
-  halalCertifyingBody?: string;
-  status: 'ACTIVE' | 'INACTIVE';
-  createdAt: string;
-}
+import { DataTable, StatusBadge } from '@/components/shared';
+import {
+  Users, Building, Mail, Phone, RefreshCw, BarChart3, Plus,
+  TrendingUp, AlertTriangle, Search, Package
+} from 'lucide-react';
 
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    contactPerson: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    country: '',
-    halalCertified: false,
-    halalCertificationExpiry: '',
-    halalCertifyingBody: ''
-  });
+  const router = useRouter();
+  const [suppliers, setSuppliers] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
 
-  useEffect(() => {
-    fetchSuppliers();
+  React.useEffect(() => {
+    // Mock data - replace with actual API call
+    setSuppliers([]);
+    setLoading(false);
   }, []);
 
-  const fetchSuppliers = async () => {
-    try {
-      const response = await fetch('/api/suppliers');
-      const data = await response.json();
-      setSuppliers(data);
-    } catch (error) {
-      console.error('Failed to fetch suppliers:', error);
-    } finally {
-      setLoading(false);
+  const navigateToDetail = (supplierId: string) => {
+    router.push(`/suppliers/${supplierId}`);
+  };
+
+  const navigateToItems = () => {
+    router.push('/items');
+  };
+
+  const navigateToProducts = () => {
+    router.push('/products');
+  };
+
+  const columns = [
+    {
+      key: 'code' as const,
+      header: 'Code',
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <Building className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'name' as const,
+      header: 'Supplier Name',
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-green-500" />
+          <span>{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'contact' as const,
+      header: 'Contact',
+      render: (value: string) => value ? (
+        <div className="flex items-center gap-1">
+          <Phone className="h-3 w-3 text-muted-foreground" />
+          <span className="text-sm">{value}</span>
+        </div>
+      ) : '-'
+    },
+    {
+      key: 'email' as const,
+      header: 'Email',
+      render: (value: string) => value ? (
+        <div className="flex items-center gap-1">
+          <Mail className="h-3 w-3 text-muted-foreground" />
+          <span className="text-sm">{value}</span>
+        </div>
+      ) : '-'
+    },
+    {
+      key: 'status' as const,
+      header: 'Status',
+      render: (value: string) => (
+        <StatusBadge status={value?.toLowerCase() as any} />
+      )
     }
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('/api/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        await fetchSuppliers();
-        setIsCreateDialogOpen(false);
-        resetForm();
-      }
-    } catch (error) {
-      console.error('Failed to create supplier:', error);
-    }
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSupplier) return;
-
-    try {
-      const response = await fetch(`/api/suppliers/${editingSupplier.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        await fetchSuppliers();
-        setEditingSupplier(null);
-        resetForm();
-      }
-    } catch (error) {
-      console.error('Failed to update supplier:', error);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this supplier?')) return;
-
-    try {
-      const response = await fetch(`/api/suppliers/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        await fetchSuppliers();
-      }
-    } catch (error) {
-      console.error('Failed to delete supplier:', error);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      code: '',
-      name: '',
-      contactPerson: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      country: '',
-      halalCertified: false,
-      halalCertificationExpiry: '',
-      halalCertifyingBody: ''
-    });
-  };
-
-  const startEdit = (supplier: Supplier) => {
-    setEditingSupplier(supplier);
-    setFormData({
-      code: supplier.code,
-      name: supplier.name,
-      contactPerson: supplier.contactPerson,
-      email: supplier.email,
-      phone: supplier.phone,
-      address: supplier.address,
-      city: supplier.city,
-      country: supplier.country,
-      halalCertified: supplier.halalCertified || false,
-      halalCertificationExpiry: supplier.halalCertificationExpiry || '',
-      halalCertifyingBody: supplier.halalCertifyingBody || ''
-    });
-  };
-
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ];
 
   if (loading) {
     return (
@@ -171,383 +96,99 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Supplier Management</h1>
-          <p className="text-gray-600 mt-1">Manage supplier information and contacts</p>
+          <h1 className="text-3xl font-bold">Supplier Management</h1>
+          <p className="text-muted-foreground">
+            Manage vendor relationships and supplier information
+          </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Supplier
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Supplier</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="code">Supplier Code</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="name">Company Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="contactPerson">Contact Person</Label>
-                <Input
-                  id="contactPerson"
-                  value={formData.contactPerson}
-                  onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    value={formData.country}
-                    onChange={(e) => setFormData({...formData, country: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="halalCertified">Halal Certification</Label>
-                <div className="mt-1">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      id="halalCertified"
-                      checked={formData.halalCertified}
-                      onChange={(e) => setFormData({...formData, halalCertified: e.target.checked})}
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Halal Certified</span>
-                  </label>
-                </div>
-              </div>
-              {formData.halalCertified && (
-                <>
-                  <div>
-                    <Label htmlFor="halalCertificationExpiry">Certification Expiry Date</Label>
-                    <input
-                      type="date"
-                      id="halalCertificationExpiry"
-                      value={formData.halalCertificationExpiry}
-                      onChange={(e) => setFormData({...formData, halalCertificationExpiry: e.target.value})}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="halalCertifyingBody">Certifying Body</Label>
-                    <input
-                      type="text"
-                      id="halalCertifyingBody"
-                      value={formData.halalCertifyingBody}
-                      onChange={(e) => setFormData({...formData, halalCertifyingBody: e.target.value})}
-                      placeholder="e.g., JAKIM, MUI, etc."
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                    />
-                  </div>
-                </>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Create Supplier</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={navigateToItems} variant="outline">
+            <Package className="h-4 w-4 mr-2" />
+            Items
+          </Button>
+          <Button onClick={navigateToProducts} variant="outline">
+            <Building className="h-4 w-4 mr-2" />
+            Products
+          </Button>
+          <Button onClick={() => router.push('/analytics')} variant="outline">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Supplier
+          </Button>
+        </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search suppliers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Users className="h-8 w-8 text-blue-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-sm text-muted-foreground">Total Suppliers</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-green-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-sm text-muted-foreground">Active</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Search className="h-8 w-8 text-yellow-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-sm text-muted-foreground">Inactive</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-8 w-8 text-red-500 mr-3" />
+              <div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-sm text-muted-foreground">Suspended</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Suppliers ({filteredSuppliers.length})</CardTitle>
+          <CardTitle>Supplier Directory</CardTitle>
+          <CardDescription>
+            Manage vendor relationships and supplier performance
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Halal Status</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSuppliers.map((supplier) => (
-                <TableRow key={supplier.id}>
-                  <TableCell className="font-medium">{supplier.code}</TableCell>
-                  <TableCell>{supplier.name}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        <span className="text-sm">{supplier.email}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-sm">{supplier.phone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span className="text-sm">{supplier.city}, {supplier.country}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {supplier.halalCertified ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        ✓ Certified
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        ✗ Not Certified
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={supplier.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                      {supplier.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => startEdit(supplier)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(supplier.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            data={suppliers}
+            columns={columns}
+            loading={loading}
+          />
         </CardContent>
       </Card>
-
-      {/* Edit Dialog */}
-      {editingSupplier && (
-        <Dialog open={!!editingSupplier} onOpenChange={() => setEditingSupplier(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Supplier</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-code">Supplier Code</Label>
-                  <Input
-                    id="edit-code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-name">Company Name</Label>
-                  <Input
-                    id="edit-name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="edit-contactPerson">Contact Person</Label>
-                <Input
-                  id="edit-contactPerson"
-                  value={formData.contactPerson}
-                  onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-email">Email</Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-phone">Phone</Label>
-                  <Input
-                    id="edit-phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="edit-address">Address</Label>
-                <Input
-                  id="edit-address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-city">City</Label>
-                  <Input
-                    id="edit-city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-country">Country</Label>
-                  <Input
-                    id="edit-country"
-                    value={formData.country}
-                    onChange={(e) => setFormData({...formData, country: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="edit-halalCertified">Halal Certification</Label>
-                <div className="mt-1">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      id="edit-halalCertified"
-                      checked={formData.halalCertified}
-                      onChange={(e) => setFormData({...formData, halalCertified: e.target.checked})}
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Halal Certified</span>
-                  </label>
-                </div>
-              </div>
-              {formData.halalCertified && (
-                <>
-                  <div>
-                    <Label htmlFor="edit-halalCertificationExpiry">Certification Expiry Date</Label>
-                    <input
-                      type="date"
-                      id="edit-halalCertificationExpiry"
-                      value={formData.halalCertificationExpiry}
-                      onChange={(e) => setFormData({...formData, halalCertificationExpiry: e.target.value})}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-halalCertifyingBody">Certifying Body</Label>
-                    <input
-                      type="text"
-                      id="edit-halalCertifyingBody"
-                      value={formData.halalCertifyingBody}
-                      onChange={(e) => setFormData({...formData, halalCertifyingBody: e.target.value})}
-                      placeholder="e.g., JAKIM, MUI, etc."
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                    />
-                  </div>
-                </>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setEditingSupplier(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Update Supplier</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }

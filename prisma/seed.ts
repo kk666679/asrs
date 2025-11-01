@@ -150,7 +150,7 @@ async function main() {
   for (const rack of racks.slice(0, 20)) {
     for (let i = 1; i <= 3; i++) {
       bins.push(await prisma.bin.create({
-        data: { code: `B${binCounter.toString().padStart(3, '0')}`, capacity: 100, weightLimit: 50.0, rackId: rack.id }
+        data: { code: `B${binCounter.toString().padStart(3, '0')}`, capacity: 100, weightLimit: 50.0, rackId: rack.id, zoneId: zones[Math.floor(Math.random() * zones.length)].id }
       }));
       binCounter++;
     }

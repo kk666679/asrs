@@ -111,7 +111,7 @@ export class MfaService {
     }
 
     // If TOTP fails, check backup codes
-    if (user.backupCodes.includes(token)) {
+    if (user.backupCodes && user.backupCodes.includes(token)) {
       // Remove the used backup code
       await this.prisma.user.update({
         where: { id: userId },

@@ -1,211 +1,89 @@
-// Shared TypeScript interfaces for ASRS system
+// Shared types for the ASRS system
 
-export interface BaseEntity {
+export interface Equipment {
   id: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Zone extends BaseEntity {
-  code: string;
   name: string;
-  description?: string;
+  type: 'forklift' | 'conveyor' | 'pallet' | 'sorting' | 'storage_retrieval';
+  model: string;
+  status: 'idle' | 'moving' | 'charging' | 'error' | 'maintenance' | 'paused' | 'loading' | 'unloading';
+  battery: number;
   location: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
-  capacity: number;
-  occupied: number;
+  loadKg: number;
+  currentLoad: number;
+  efficiency: number;
+  temperature: number;
+  tasksCompleted: number;
+  lastMaintenance: string;
+  x?: number;
+  y?: number;
 }
 
-export interface Bin extends BaseEntity {
-  code: string;
-  zoneId: string;
-  zone: Zone;
-  location: {
-    aisle: string;
-    shelf: string;
-    position: string;
-  };
-  status: 'EMPTY' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE';
-  item?: Item;
-}
-
-export interface Item extends BaseEntity {
-  sku: string;
-  name: string;
-  description?: string;
-  category: string;
-  quantity: number;
-  minStockLevel: number;
-  maxStockLevel: number;
-  unitCost: number;
-  supplier: Supplier;
-  status: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED';
-  bin?: Bin;
-}
-
-export interface Product extends BaseEntity {
-  sku: string;
-  name: string;
-  description?: string;
-  category: string;
-  manufacturer: {
-    id: string;
-    name: string;
-  };
-  status: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED';
-}
-
-export interface Supplier extends BaseEntity {
-  name: string;
-  contactInfo: {
-    email: string;
-    phone: string;
-    address: string;
-  };
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
-  totalItems: number;
-  rating?: number;
-}
-
-export interface Robot extends BaseEntity {
+export interface Robot {
+  id: string;
   code: string;
   name: string;
   type: 'STORAGE_RETRIEVAL' | 'CONVEYOR' | 'SORTING' | 'PACKING' | 'TRANSPORT';
   status: 'IDLE' | 'WORKING' | 'MAINTENANCE' | 'ERROR' | 'OFFLINE';
-  location: string | null;
-  batteryLevel: number | null;
-  zone: Zone | null;
-  commands: RobotCommand[];
-  lastMaintenance?: string;
-  nextMaintenance?: string;
+  location?: string;
+  batteryLevel?: number;
+  lastMaintenance?: Date;
+  zoneId: string;
 }
 
-export interface RobotCommand extends BaseEntity {
-  robotId: string;
-  type: 'MOVE' | 'PICK' | 'PLACE' | 'SCAN' | 'CALIBRATE' | 'EMERGENCY_STOP';
-  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-  parameters: Record<string, any>;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  errorMessage?: string;
-}
-
-export interface Equipment extends BaseEntity {
-  name: string;
-  type: 'shuttle' | 'conveyor' | 'vlm' | 'robot';
-  status: 'online' | 'offline' | 'maintenance' | 'charging';
-  battery?: number;
-  location: string;
-  task?: string;
-  throughput?: number;
-  currentFloor?: number;
-  lastMaintenance?: string;
-  nextMaintenance?: string;
-}
-
-export interface Sensor extends BaseEntity {
+export interface Sensor {
+  id: string;
   code: string;
   name: string;
   type: 'TEMPERATURE' | 'HUMIDITY' | 'WEIGHT' | 'PRESSURE' | 'MOTION' | 'LIGHT' | 'VIBRATION';
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'FAULTY';
   location?: string;
+  binId?: string;
+  zoneId?: string;
+  calibrationDate?: Date;
+  lastMaintenance?: Date;
   thresholdMin?: number;
   thresholdMax?: number;
-  zone?: Zone;
-  bin?: Bin;
-  readings: SensorReading[];
 }
 
-export interface SensorReading extends BaseEntity {
-  sensorId: string;
-  value: number;
-  unit: string;
-  timestamp: string;
-}
-
-export interface Alert extends BaseEntity {
-  type: 'warning' | 'critical' | 'info' | 'maintenance';
-  title: string;
-  description: string;
+export interface Alert {
+  id: string;
+  type: 'LOW_STOCK' | 'OVERSTOCK' | 'EXPIRY_WARNING' | 'QUALITY_ISSUE' | 'EQUIPMENT_FAILURE' | 'SENSOR_ALERT';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  message: string;
+  itemId?: string;
+  binId?: string;
+  equipmentId?: string;
+  sensorId?: string;
+  createdAt: Date;
+  resolvedAt?: Date;
   acknowledged: boolean;
-  acknowledgedBy?: string;
-  acknowledgedAt?: string;
-  equipment?: string;
-  zone?: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  category: 'equipment' | 'sensor' | 'system' | 'maintenance' | 'security';
 }
 
-export interface MaintenanceTask extends BaseEntity {
-  title: string;
-  description: string;
-  equipment: string;
-  type: 'preventive' | 'corrective' | 'predictive' | 'emergency';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'scheduled' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
-  scheduledDate: string;
-  completedDate?: string;
-  technician?: string;
-  estimatedHours: number;
-  actualHours?: number;
-  cost?: number;
-  notes?: string;
-  zone?: string;
+export interface InventoryItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  weight: number;
+  hazardLevel: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+  temperature: 'AMBIENT' | 'REFRIGERATED' | 'FROZEN';
+  minStock: number;
+  maxStock?: number;
+  barcode?: string;
+  supplierId: string;
+  quantity: number;
+  location: string;
+  lastCounted?: Date;
+  status: 'ACTIVE' | 'INACTIVE';
 }
 
-export interface Report extends BaseEntity {
-  title: string;
-  description: string;
-  type: 'performance' | 'equipment' | 'efficiency' | 'maintenance' | 'sensor' | 'inventory';
-  status: 'generating' | 'completed' | 'failed';
-  createdAt: string;
-  generatedAt?: string;
-  fileSize?: string;
-  downloadUrl?: string;
-  parameters?: {
-    dateRange: { start: string; end: string };
-    equipment?: string[];
-    zones?: string[];
-  };
-}
-
-export interface AnalyticsData {
-  summary: {
-    totalItems: number;
-    activeBins: number;
-    todaysMovements: number;
-    pendingTasks: number;
-  };
-  kpis: {
-    inventoryTurnover: number;
-    spaceUtilization: number;
-    stockAlertsCount: number;
-  };
-  alerts: Array<{
-    id: string;
-    sku: string;
-    name: string;
-    currentStock: number;
-    minStock: number;
-    status: string;
-  }>;
-  trends: Array<{
-    date: string;
-    movements: number;
-  }>;
-}
-
-export interface InventoryStats {
-  totalItems: number;
-  totalProducts: number;
-  totalSuppliers: number;
-  lowStockItems: number;
-  outOfStockItems: number;
-  activeSuppliers: number;
-  totalValue: number;
-  averageStockLevel: number;
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  warehouseId: string;
 }
 
 // API Response types
@@ -217,57 +95,251 @@ export interface ApiResponse<T> {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
-// WebSocket event types
-export interface WebSocketEvent {
-  type: string;
-  payload: any;
-  timestamp: string;
-}
-
-export interface RealtimeUpdate {
-  type: 'EQUIPMENT_STATUS' | 'SENSOR_READING' | 'ALERT_CREATED' | 'ROBOT_COMMAND' | 'MAINTENANCE_UPDATE';
-  data: any;
-}
-
-// Form types
-export interface FilterOptions {
-  search?: string;
-  status?: string;
+// Filter and search types
+export interface EquipmentFilters {
   type?: string;
-  priority?: string;
-  zoneId?: string;
+  status?: string;
+  search?: string;
+}
+
+export interface InventoryFilters {
+  category?: string;
+  supplier?: string;
+  status?: string;
+  search?: string;
+}
+
+export interface AlertFilters {
+  type?: string;
+  severity?: string;
+  acknowledged?: boolean;
   dateRange?: {
     start: Date;
     end: Date;
   };
 }
 
-export interface SortOptions {
-  field: string;
-  direction: 'asc' | 'desc';
+// WebSocket event types
+export interface WebSocketEvent {
+  type: 'EQUIPMENT_UPDATE' | 'SENSOR_READING' | 'ALERT_CREATED' | 'INVENTORY_CHANGE' | 'ROBOT_COMMAND' | 'MAINTENANCE_CREATED' | 'MAINTENANCE_UPDATED' | 'OPERATION_CREATED' | 'OPERATION_UPDATED' | 'SHIPMENT_CREATED' | 'SHIPMENT_UPDATED' | 'LOCATION_CREATED' | 'LOCATION_UPDATED' | 'ITEM_CREATED' | 'ITEM_UPDATED';
+  payload: any;
+  timestamp: Date;
 }
 
-// Error types
-export interface ApiError {
-  message: string;
-  code: string;
-  details?: any;
+// Chart data types
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+  timestamp?: Date;
 }
 
-// Notification types
-export interface NotificationItem {
+export interface TimeSeriesData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+    borderColor?: string;
+    backgroundColor?: string;
+  }[];
+}
+
+export interface Maintenance {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
+  type: 'PREVENTIVE' | 'CORRECTIVE' | 'PREDICTIVE' | 'INSPECTION';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'OVERDUE';
+  equipmentId?: string;
+  robotId?: string;
+  sensorId?: string;
+  description: string;
+  scheduledDate: string;
+  completedDate?: string;
+  actualDuration?: number;
+  estimatedDuration: number;
+  cost?: number;
+  technician?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MaintenanceFilters {
+  type?: string;
+  priority?: string;
+  status?: string;
+  equipmentId?: string;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+}
+export interface Operation {
+  id: string;
+  type: "PICKING" | "PACKING" | "SORTING" | "LOADING" | "UNLOADING" | "MOVEMENT";
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "FAILED";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  itemId: string;
+  quantity: number;
+  sourceLocation?: string;
+  destinationLocation?: string;
+  assignedRobotId?: string;
+  assignedUserId?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  estimatedDuration: number;
+  actualDuration?: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Shipment {
+  id: string;
+  type: "INBOUND" | "OUTBOUND";
+  status: "PENDING" | "IN_TRANSIT" | "RECEIVED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  reference: string;
+  supplierId?: string;
+  customerId?: string;
+  items: ShipmentItem[];
+  totalWeight: number;
+  totalVolume: number;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  scheduledDate: Date;
+  actualDate?: Date;
+  carrier?: string;
+  trackingNumber?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShipmentItem {
+  itemId: string;
+  quantity: number;
+  unitPrice?: number;
+}
+
+export interface Location {
+  id: string;
+  code: string;
+  type: "BIN" | "SHELF" | "FLOOR" | "CONVEYOR" | "DOCK";
+  zoneId: string;
+  aisle?: string;
+  rack?: string;
+  level?: string;
+  position?: string;
+  coordinates: {
+    x: number;
+    y: number;
+    z?: number;
+  };
+  capacity: number;
+  currentLoad: number;
+  status: "ACTIVE" | "INACTIVE" | "MAINTENANCE" | "BLOCKED";
+  temperature?: number;
+  humidity?: number;
+  lastUsed?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Item {
+  id: string;
+  sku: string;
+  name: string;
+  description?: string;
+  category: string;
+  subcategory?: string;
+  unit: "PIECE" | "KG" | "LITER" | "BOX" | "PALLET";
+  weight: number;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+  };
+  hazardLevel: "NONE" | "LOW" | "MEDIUM" | "HIGH";
+  storageRequirements: {
+    temperature: "AMBIENT" | "REFRIGERATED" | "FROZEN";
+    humidity?: number;
+    specialConditions?: string[];
+  };
+  supplierId: string;
+  barcode?: string;
+  qrCode?: string;
+  status: "ACTIVE" | "INACTIVE" | "DISCONTINUED";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OperationFilters {
+  type?: string;
+  status?: string;
+  priority?: string;
+  assignedRobotId?: string;
+  assignedUserId?: string;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+}
+
+export interface ShipmentFilters {
+  type?: string;
+  status?: string;
+  priority?: string;
+  supplierId?: string;
+  customerId?: string;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+}
+
+export interface LocationFilters {
+  type?: string;
+  zoneId?: string;
+  status?: string;
+  search?: string;
+}
+
+export interface ItemFilters {
+  category: string;
+  subcategory: string;
+  supplierId: string;
+  hazardLevel: string;
+  status: string;
+  search: string;
+}
+
+export interface Transaction {
+  id: string;
+  type: 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'ADJUSTMENT';
+  itemId: string;
+  quantity: number;
+  fromLocation?: string;
+  toLocation?: string;
+  reference?: string;
+  userId: string;
+  timestamp: Date;
+  notes?: string;
+}
+
+export interface Movement {
+  id: string;
+  type: 'PUTAWAY' | 'PICKING' | 'TRANSFER' | 'ADJUSTMENT' | 'COUNT';
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  itemId: string;
+  quantity: number;
+  fromLocation?: string;
+  toLocation?: string;
+  assignedTo?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

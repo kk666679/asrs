@@ -13,20 +13,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import {
-  Activity,
-  Cpu,
-  Zap,
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
-  Play,
-  Square,
-  Settings,
-  TrendingUp,
-  Users,
-  Bot,
-  Database
+  Activity, Cpu, Zap, AlertTriangle, CheckCircle, RefreshCw, Play, Square, Settings,
+  TrendingUp, Users, Bot, Database, Eye, Layers, Gauge, Thermometer, Wifi,
+  Brain, Target, Lightbulb, BarChart3, LineChart, PieChart, Maximize, Minimize,
+  Camera, Map, Radar, Satellite, Globe, Boxes, Package, MapPin, Clock
 } from 'lucide-react';
 
 interface TwinEntity {
@@ -385,12 +378,411 @@ export default function DigitalTwinPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="3d-view">3D Visualization</TabsTrigger>
           <TabsTrigger value="twins">Digital Twins</TabsTrigger>
+          <TabsTrigger value="analytics">Predictive Analytics</TabsTrigger>
           <TabsTrigger value="agents">AI Agents</TabsTrigger>
           <TabsTrigger value="simulation">Simulation</TabsTrigger>
+          <TabsTrigger value="iot">IoT Integration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Real-time Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gauge className="h-5 w-5" />
+                  Real-time Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>System Load</span>
+                    <span>78%</span>
+                  </div>
+                  <Progress value={78} className="h-2" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Sync Accuracy</span>
+                    <span>94%</span>
+                  </div>
+                  <Progress value={94} className="h-2" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Prediction Confidence</span>
+                    <span>87%</span>
+                  </div>
+                  <Progress value={87} className="h-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Live Metrics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm">Temperature</span>
+                  </div>
+                  <span className="font-mono">22.5°C</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wifi className="h-4 w-4 text-green-500" />
+                    <span className="text-sm">Connectivity</span>
+                  </div>
+                  <Badge variant="default">98.7%</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm">Processing</span>
+                  </div>
+                  <span className="font-mono">1.2ms</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button className="w-full" variant="outline">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View 3D Model
+                </Button>
+                <Button className="w-full" variant="outline">
+                  <Brain className="h-4 w-4 mr-2" />
+                  Run AI Analysis
+                </Button>
+                <Button className="w-full" variant="outline">
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Generate Insights
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="3d-view">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* 3D Viewport */}
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    3D Warehouse Visualization
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Maximize className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg border-2 border-dashed border-blue-200 flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <div className="grid grid-cols-4 gap-2 max-w-md mx-auto">
+                      {/* Simulated 3D warehouse layout */}
+                      {Array.from({length: 16}).map((_, i) => (
+                        <div key={i} className={`h-8 rounded ${i % 4 === 0 ? 'bg-blue-400' : i % 3 === 0 ? 'bg-green-400' : 'bg-gray-300'} shadow-sm`} />
+                      ))}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Interactive 3D Model • Real-time Updates
+                    </div>
+                    <div className="flex justify-center gap-4 text-xs">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-blue-400 rounded" />
+                        <span>Robots</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-green-400 rounded" />
+                        <span>Active Zones</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-gray-300 rounded" />
+                        <span>Storage</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3D Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  View Controls
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Camera Angle</Label>
+                  <Slider defaultValue={[45]} max={360} step={1} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Zoom Level</Label>
+                  <Slider defaultValue={[75]} max={200} step={5} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Show Paths</Label>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Real-time Mode</Label>
+                  <Switch defaultChecked />
+                </div>
+                <div className="space-y-2">
+                  <Button className="w-full" variant="outline">
+                    <Map className="h-4 w-4 mr-2" />
+                    Top View
+                  </Button>
+                  <Button className="w-full" variant="outline">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Isometric
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Predictive Models */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  Predictive Models
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">94.2%</div>
+                    <div className="text-sm text-muted-foreground">Demand Accuracy</div>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">87.5%</div>
+                    <div className="text-sm text-muted-foreground">Failure Prediction</div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Model Training</span>
+                    <span>92% Complete</span>
+                  </div>
+                  <Progress value={92} className="h-2" />
+                </div>
+                <Button className="w-full">
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Generate Insights
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Analytics Charts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Performance Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="h-32 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <LineChart className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <div className="text-sm text-muted-foreground">Real-time Performance Chart</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div>
+                      <div className="font-bold">1.2ms</div>
+                      <div className="text-muted-foreground">Latency</div>
+                    </div>
+                    <div>
+                      <div className="font-bold">99.8%</div>
+                      <div className="text-muted-foreground">Uptime</div>
+                    </div>
+                    <div>
+                      <div className="font-bold">2.1TB</div>
+                      <div className="text-muted-foreground">Data</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Recommendations */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  AI Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <Lightbulb className="h-5 w-5 text-yellow-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Optimize Robot Paths</div>
+                      <div className="text-sm text-muted-foreground">Reduce travel time by 15% with new routing algorithm</div>
+                      <Badge className="mt-1" variant="outline">High Impact</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Maintenance Alert</div>
+                      <div className="text-sm text-muted-foreground">Robot-003 showing early wear patterns</div>
+                      <Badge className="mt-1" variant="outline">Medium Priority</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Capacity Optimization</div>
+                      <div className="text-sm text-muted-foreground">Increase storage density in Zone A by 12%</div>
+                      <Badge className="mt-1" variant="outline">Low Priority</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="iot">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* IoT Device Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wifi className="h-5 w-5" />
+                  IoT Devices
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-sm">Temperature Sensors</span>
+                  </div>
+                  <Badge variant="outline">24/24</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-sm">Motion Detectors</span>
+                  </div>
+                  <Badge variant="outline">18/18</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                    <span className="text-sm">RFID Readers</span>
+                  </div>
+                  <Badge variant="outline">11/12</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-sm">Cameras</span>
+                  </div>
+                  <Badge variant="outline">8/8</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sensor Data */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Radar className="h-5 w-5" />
+                  Live Sensor Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 border rounded">
+                    <Thermometer className="h-6 w-6 mx-auto mb-1 text-blue-500" />
+                    <div className="font-bold">22.5°C</div>
+                    <div className="text-xs text-muted-foreground">Temperature</div>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <Activity className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                    <div className="font-bold">65%</div>
+                    <div className="text-xs text-muted-foreground">Humidity</div>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <Gauge className="h-6 w-6 mx-auto mb-1 text-purple-500" />
+                    <div className="font-bold">1013</div>
+                    <div className="text-xs text-muted-foreground">Pressure</div>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <Zap className="h-6 w-6 mx-auto mb-1 text-yellow-500" />
+                    <div className="font-bold">98.2%</div>
+                    <div className="text-xs text-muted-foreground">Power</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Device Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Device Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button className="w-full" variant="outline">
+                  <Satellite className="h-4 w-4 mr-2" />
+                  Scan Network
+                </Button>
+                <Button className="w-full" variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sync All Devices
+                </Button>
+                <Button className="w-full" variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configure Alerts
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="overview_old">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* System Status */}
             <Card>

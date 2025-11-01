@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,7 +15,17 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+
+// Lazy load chart components for better performance
+const Line = dynamic(() => import('react-chartjs-2').then(mod => ({ default: mod.Line })), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center">Loading chart...</div>
+});
+
+const Bar = dynamic(() => import('react-chartjs-2').then(mod => ({ default: mod.Bar })), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center">Loading chart...</div>
+});
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +33,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnimatedCard from "@/components/ui/animated-card";
+import { LazyChart } from "@/components/ui/lazy-chart";
+import { ResponsiveGrid } from "@/components/ui/responsive-grid";
+import { AccessibilityWrapper } from "@/components/ui/accessibility-wrapper";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ThemeToggle } from "@/components/theme-toggle";
+import TrustIndicator from "@/components/enhanced/TrustIndicator";
+import RealTimeMetrics from "@/components/enhanced/RealTimeMetrics";
+import InteractiveHeatmap from "@/components/enhanced/InteractiveHeatmap";
 import {
   Activity,
   AlertTriangle,
@@ -117,7 +136,27 @@ interface DashboardData {
   };
 }
 
-export default function EnhancedDashboard() {
+interface SensorReading {
+  sensor?: {
+    type: string;
+  };
+  value: number;
+}
+
+interface RobotData {
+  id: string;
+  name: string;
+  status: string;
+  batteryLevel?: number;
+  location?: string;
+  type?: string;
+  zones?: {
+    code: string;
+  };
+}
+
+export default function 
+EnhancedDashboard() {
   const [activeModule, setActiveModule] = useState('dashboard');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,76 +172,90 @@ export default function EnhancedDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [analyticsRes, sensorsRes, robotsRes] = await Promise.all([
-        fetch("/api/analytics"),
-        fetch("/api/sensor-readings"),
+      const [sensorsRes, robotsRes] = await Promise.all([
+        fetch("/api/sensors/readings"),
         fetch("/api/robots")
       ]);
 
-      const analytics = analyticsRes.ok ? await analyticsRes.json() : null;
-      const sensors = sensorsRes.ok ? await sensorsRes.json() : [];
-      const robots = robotsRes.ok ? await robotsRes.json() : [];
+      let sensors = { readings: [] };
+      let robots = [];
 
-      // Mock comprehensive data structure
-      const mockData: DashboardData = {
-        summary: analytics?.summary || {
-          totalItems: 15420,
-          activeBins: 892,
-          todaysMovements: 1247,
-          pendingTasks: 23
+      if (sensorsRes.ok) {
+        try {
+          sensors = await sensorsRes.json();
+        } catch (e) {
+          console.warn('Failed to parse sensors response:', e);
+        }
+      }
+
+      if (robotsRes.ok) {
+        try {
+          const robotsData = await robotsRes.json();
+          robots = Array.isArray(robotsData) ? robotsData : [];
+        } catch (e) {
+          console.warn('Failed to parse robots response:', e);
+        }
+      }
+
+      const dashboardData: DashboardData = {
+        summary: {
+          totalItems: 0,
+          activeBins: 0,
+          todaysMovements: 0,
+          pendingTasks: 0
         },
         sensors: {
-          temperature: sensors.find((s: any) => s.type === 'temperature')?.value || 23.5,
-          humidity: sensors.find((s: any) => s.type === 'humidity')?.value || 45,
-          airQuality: 'Good',
-          vibration: sensors.find((s: any) => s.type === 'vibration')?.value || 2.3,
-          powerUsage: 45,
-          motorHealth: 94,
-          loadCapacity: 78
+          temperature: (sensors.readings as SensorReading[]).find((r: SensorReading) => r.sensor?.type === 'TEMPERATURE')?.value || 0,
+          humidity: (sensors.readings as SensorReading[]).find((r: SensorReading) => r.sensor?.type === 'HUMIDITY')?.value || 0,
+          airQuality: 'Unknown',
+          vibration: (sensors.readings as SensorReading[]).find((r: SensorReading) => r.sensor?.type === 'VIBRATION')?.value || 0,
+          powerUsage: 0,
+          motorHealth: 0,
+          loadCapacity: 0
         },
         equipment: {
-          shuttles: [
-            { id: 's1', name: 'Shuttle #1', status: 'online', battery: 87, location: 'Aisle 3, Pos 45', task: 'Retrieving Item #4582' },
-            { id: 's2', name: 'Shuttle #2', status: 'online', battery: 92, location: 'Aisle 5, Pos 12', task: 'Idle' },
-            { id: 's3', name: 'Shuttle #3', status: 'charging', battery: 45, location: 'Aisle 7, Pos 33', task: 'Charging' }
-          ],
-          conveyors: [
-            { id: 'c1', name: 'Conveyor A', status: 'maintenance', throughput: 120, zone: 'Loading Bay' },
-            { id: 'c2', name: 'Conveyor B', status: 'online', throughput: 95, zone: 'Sorting' }
-          ],
-          vlms: [
-            { id: 'v1', name: 'VLM #1', status: 'online', currentFloor: 3, task: 'Moving to Floor 5' },
-            { id: 'v2', name: 'VLM #2', status: 'online', currentFloor: 7, task: 'Idle' }
-          ]
+          shuttles: (robots || []).filter((r: RobotData) => r && r.type === 'STORAGE_RETRIEVAL').map((r: RobotData) => ({
+            id: r?.id || '',
+            name: r?.name || '',
+            status: r?.status || 'OFFLINE',
+            battery: r?.batteryLevel || 0,
+            location: r?.location || '',
+            task: 'Idle'
+          })),
+          conveyors: (robots || []).filter((r: RobotData) => r && r.type === 'CONVEYOR').map((r: RobotData) => ({
+            id: r?.id || '',
+            name: r?.name || '',
+            status: r?.status || 'OFFLINE',
+            throughput: 0,
+            zone: r?.zones?.code || ''
+          })),
+          vlms: (robots || []).filter((r: RobotData) => r && r.type === 'SORTING').map((r: RobotData) => ({
+            id: r?.id || '',
+            name: r?.name || '',
+            status: r?.status || 'OFFLINE',
+            currentFloor: 1,
+            task: 'Idle'
+          }))
         },
-        alerts: [
-          {
-            id: '1',
-            type: 'warning',
-            title: 'Elevated Vibration - Shuttle #3',
-            description: 'Vibration levels above threshold in motor assembly',
-            time: '10 minutes ago',
-            acknowledged: false
-          },
-          {
-            id: '2',
-            type: 'info',
-            title: 'Preventive Maintenance Due',
-            description: 'Conveyor System A maintenance scheduled in 2 days',
-            time: '1 hour ago',
-            acknowledged: false
-          }
-        ],
+        alerts: [],
         performance: {
-          throughput: [120, 210, 180, 245, 230, 195, 160],
-          efficiency: [85, 92, 88, 95, 90, 87, 82],
-          labels: ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
+          throughput: [],
+          efficiency: [],
+          labels: []
         }
       };
 
-      setDashboardData(mockData);
+      setDashboardData(dashboardData);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
+      // Set fallback data on error
+      setDashboardData({
+        summary: { totalItems: 0, activeBins: 0, todaysMovements: 0, pendingTasks: 0 },
+        sensors: { temperature: 0, humidity: 0, airQuality: 'Unknown', vibration: 0, powerUsage: 0, motorHealth: 0, loadCapacity: 0 },
+        equipment: { shuttles: [], conveyors: [], vlms: [] },
+        alerts: [],
+        performance: { throughput: [], efficiency: [], labels: [] }
+      });
     } finally {
       setLoading(false);
     }
@@ -282,148 +335,308 @@ export default function EnhancedDashboard() {
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Header with System Status */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-glow">ASRS Control Center</h1>
-          <p className="text-muted-foreground mt-1">Real-time monitoring and control dashboard</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">System Online</span>
-          </div>
-          <ThemeToggle />
-          <Button
-            variant={realTimeUpdates ? "default" : "outline"}
-            size="sm"
-            onClick={() => setRealTimeUpdates(!realTimeUpdates)}
+      <motion.div 
+        className="flex justify-between items-center glass-effect neon-border rounded-xl p-6 mb-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          <h1 className="text-4xl font-bold text-glow bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
+            ASRS Control Center
+          </h1>
+          <p className="text-blue-300/80 mt-2 text-lg">Real-time monitoring and control dashboard</p>
+        </motion.div>
+        <motion.div 
+          className="flex items-center gap-4"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
+          <motion.div 
+            className="flex items-center gap-2 glass-effect px-4 py-2 rounded-full neon-border"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {realTimeUpdates ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
-            Live Updates
-          </Button>
-        </div>
-      </div>
+            <motion.div 
+              className="w-3 h-3 bg-cyan-400 rounded-full"
+              animate={{ 
+                boxShadow: [
+                  "0 0 5px #00bcd4",
+                  "0 0 20px #00bcd4",
+                  "0 0 5px #00bcd4"
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            <span className="text-sm font-medium text-cyan-300">System Online</span>
+          </motion.div>
+          <ThemeToggle />
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              variant={realTimeUpdates ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRealTimeUpdates(!realTimeUpdates)}
+              className={`glass-effect neon-border ${realTimeUpdates ? 'bg-blue-600/30 text-cyan-300' : 'text-blue-300'}`}
+            >
+              {realTimeUpdates ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
+              Live Updates
+            </Button>
+          </motion.div>
+        </motion.div>
+      </motion.div>
 
       {/* Quick Actions */}
-      <div className="flex gap-3">
-        <Button className="bg-green-600 hover:bg-green-700">
-          <Play className="h-4 w-4 mr-2" />
-          Start All Systems
-        </Button>
-        <Button variant="destructive">
-          <Square className="h-4 w-4 mr-2" />
-          Emergency Stop
-        </Button>
-        <Button variant="outline">
-          <Settings className="h-4 w-4 mr-2" />
-          Optimize Routes
-        </Button>
-        <Button variant="outline">
-          <Activity className="h-4 w-4 mr-2" />
-          Run Diagnostics
-        </Button>
-      </div>
+      <motion.div 
+        className="flex gap-3 mb-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+      >
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button className="glass-effect bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 neon-border border-emerald-400/30 hover:border-emerald-400/60">
+            <Play className="h-4 w-4 mr-2" />
+            Start All Systems
+          </Button>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button className="glass-effect bg-red-600/30 hover:bg-red-600/50 text-red-300 neon-border border-red-400/30 hover:border-red-400/60">
+            <Square className="h-4 w-4 mr-2" />
+            Emergency Stop
+          </Button>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button className="glass-effect bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 neon-border">
+            <Settings className="h-4 w-4 mr-2" />
+            Optimize Routes
+          </Button>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button className="glass-effect bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 neon-border border-purple-400/30">
+            <Activity className="h-4 w-4 mr-2" />
+            Run Diagnostics
+          </Button>
+        </motion.div>
+      </motion.div>
+
+      {/* Enhanced Real-time Metrics */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+        className="mb-8"
+      >
+        <RealTimeMetrics />
+      </motion.div>
 
       {/* System Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AnimatedCard delay={0}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Throughput</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.summary.todaysMovements || 0}/hr</div>
-            <p className="text-xs text-muted-foreground">+12% from yesterday</p>
-          </CardContent>
-        </AnimatedCard>
+      <motion.div 
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20, scale: 0.9 },
+            show: { opacity: 1, y: 0, scale: 1 }
+          }}
+          whileHover={{ 
+            scale: 1.05, 
+            y: -5,
+            transition: { duration: 0.2 }
+          }}
+          className="glass-effect neon-border rounded-xl p-6 hover:shadow-2xl hover:shadow-blue-500/20"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-blue-300">Throughput</h3>
+            <TrendingUp className="h-5 w-5 text-cyan-400" />
+          </div>
+          <div className="text-3xl font-bold text-white mb-2">{dashboardData?.summary.todaysMovements || 0}/hr</div>
+          <p className="text-xs text-emerald-400">+12% from yesterday</p>
+        </motion.div>
 
-        <AnimatedCard delay={0.1}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">99.8%</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
-          </CardContent>
-        </AnimatedCard>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20, scale: 0.9 },
+            show: { opacity: 1, y: 0, scale: 1 }
+          }}
+          whileHover={{ 
+            scale: 1.05, 
+            y: -5,
+            transition: { duration: 0.2 }
+          }}
+          className="glass-effect neon-border rounded-xl p-6 hover:shadow-2xl hover:shadow-green-500/20"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-blue-300">Uptime</h3>
+            <Activity className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div className="text-3xl font-bold text-white mb-2">99.8%</div>
+          <p className="text-xs text-blue-300/70">Last 30 days</p>
+        </motion.div>
 
-        <AnimatedCard delay={0.2}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Units</CardTitle>
-            <Cpu className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12/15</div>
-            <p className="text-xs text-muted-foreground">3 units in maintenance</p>
-          </CardContent>
-        </AnimatedCard>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20, scale: 0.9 },
+            show: { opacity: 1, y: 0, scale: 1 }
+          }}
+          whileHover={{ 
+            scale: 1.05, 
+            y: -5,
+            transition: { duration: 0.2 }
+          }}
+          className="glass-effect neon-border rounded-xl p-6 hover:shadow-2xl hover:shadow-purple-500/20"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-blue-300">Active Units</h3>
+            <Cpu className="h-5 w-5 text-purple-400" />
+          </div>
+          <div className="text-3xl font-bold text-white mb-2">12/15</div>
+          <p className="text-xs text-yellow-400">3 units in maintenance</p>
+        </motion.div>
 
-        <AnimatedCard delay={0.3}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.summary.totalItems || 0}</div>
-            <p className="text-xs text-muted-foreground">Across all locations</p>
-          </CardContent>
-        </AnimatedCard>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20, scale: 0.9 },
+            show: { opacity: 1, y: 0, scale: 1 }
+          }}
+          whileHover={{ 
+            scale: 1.05, 
+            y: -5,
+            transition: { duration: 0.2 }
+          }}
+          className="glass-effect neon-border rounded-xl p-6 hover:shadow-2xl hover:shadow-cyan-500/20"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-blue-300">Total Items</h3>
+            <Package className="h-5 w-5 text-cyan-400" />
+          </div>
+          <div className="text-3xl font-bold text-white mb-2">{dashboardData?.summary.totalItems || 0}</div>
+          <p className="text-xs text-blue-300/70">Across all locations</p>
+        </motion.div>
+      </motion.div>
+
+      {/* Trust and Heatmap Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+        >
+          <TrustIndicator />
+        </motion.div>
+        
+        <motion.div
+          className="lg:col-span-2"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1.0, duration: 0.6 }}
+        >
+          <InteractiveHeatmap />
+        </motion.div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Performance Chart */}
-        <AnimatedCard className="lg:col-span-2" delay={0.4}>
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-            <CardDescription>Throughput and efficiency over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <Line data={performanceData} options={performanceOptions} />
-            </div>
-          </CardContent>
-        </AnimatedCard>
+        <motion.div 
+          className="lg:col-span-2 glass-effect neon-border rounded-xl p-6"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          whileHover={{ 
+            scale: 1.02,
+            transition: { duration: 0.2 }
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-white mb-2">Performance Metrics</h3>
+            <p className="text-blue-300/70">Throughput and efficiency over time</p>
+          </div>
+          <div className="glass-effect rounded-lg p-4">
+            <LazyChart>
+              <div className="h-80">
+                <Line data={performanceData} options={performanceOptions} />
+              </div>
+            </LazyChart>
+          </div>
+        </motion.div>
 
         {/* Active Alerts */}
-        <AnimatedCard delay={0.5}>
-          <CardHeader>
-            <CardTitle>Active Alerts</CardTitle>
-            <CardDescription>System notifications and warnings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {dashboardData?.alerts.filter(alert => !alert.acknowledged).map((alert) => (
-              <Alert key={alert.id} className="border-l-4 border-l-yellow-500">
+        <motion.div 
+          className="glass-effect neon-border rounded-xl p-6"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1.0, duration: 0.6 }}
+          whileHover={{ 
+            scale: 1.02,
+            transition: { duration: 0.2 }
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-white mb-2">Active Alerts</h3>
+            <p className="text-blue-300/70">System notifications and warnings</p>
+          </div>
+          <div className="space-y-3">
+            {dashboardData?.alerts.filter(alert => !alert.acknowledged).map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.2 + index * 0.1 }}
+                className="glass-effect border-l-4 border-l-yellow-400 rounded-lg p-4 hover:bg-white/10"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-2">
                     {getAlertIcon(alert.type)}
                     <div>
-                      <AlertTitle className="text-sm">{alert.title}</AlertTitle>
-                      <AlertDescription className="text-xs mt-1">
+                      <h4 className="text-sm font-medium text-white">{alert.title}</h4>
+                      <p className="text-xs mt-1 text-blue-300/70">
                         {alert.description}
-                      </AlertDescription>
-                      <p className="text-xs text-muted-foreground mt-1">{alert.time}</p>
+                      </p>
+                      <p className="text-xs text-blue-400/60 mt-1">{alert.time}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => acknowledgeAlert(alert.id)}
+                    className="glass-effect p-2 rounded-full hover:bg-green-500/20"
                   >
-                    <CheckCircle className="h-3 w-3" />
-                  </Button>
+                    <CheckCircle className="h-3 w-3 text-green-400" />
+                  </motion.button>
                 </div>
-              </Alert>
+              </motion.div>
             ))}
             {(!dashboardData?.alerts.filter(alert => !alert.acknowledged).length) && (
-              <div className="text-center py-4 text-muted-foreground">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                <p className="text-sm">No active alerts</p>
-              </div>
+              <motion.div 
+                className="text-center py-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2 }}
+              >
+                <CheckCircle className="h-12 w-12 mx-auto mb-3 text-emerald-400" />
+                <p className="text-sm text-blue-300">No active alerts</p>
+              </motion.div>
             )}
-          </CardContent>
-        </AnimatedCard>
+          </div>
+        </motion.div>
       </div>
 
       {/* Equipment Status and Environmental Sensors */}
@@ -577,31 +790,33 @@ export default function EnhancedDashboard() {
           <CardDescription>Historical sensor readings over time</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <Bar
-              data={{
-                labels: ['Shuttle 1', 'Shuttle 2', 'Shuttle 3', 'Conveyor A', 'Conveyor B', 'VLM 1', 'VLM 2'],
-                datasets: [{
-                  label: 'Vibration (m/s²)',
-                  data: [2.3, 1.8, 3.1, 1.2, 0.9, 1.5, 1.7],
-                  backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                }, {
-                  label: 'Temperature (°C)',
-                  data: [28, 25, 31, 23, 22, 26, 24],
-                  backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                }],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'top' as const,
+          <LazyChart>
+            <div className="h-80">
+              <Bar
+                data={{
+                  labels: ['Shuttle 1', 'Shuttle 2', 'Shuttle 3', 'Conveyor A', 'Conveyor B', 'VLM 1', 'VLM 2'],
+                  datasets: [{
+                    label: 'Vibration (m/s²)',
+                    data: [2.3, 1.8, 3.1, 1.2, 0.9, 1.5, 1.7],
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                  }, {
+                    label: 'Temperature (°C)',
+                    data: [28, 25, 31, 23, 22, 26, 24],
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                  }],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top' as const,
+                    },
                   },
-                },
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
+          </LazyChart>
         </CardContent>
       </Card>
     </div>
@@ -969,46 +1184,50 @@ export default function EnhancedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation Tabs */}
-      <div className="glass-effect border-b border-neonBlue/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 glass-effect">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="sensors">Sensors</TabsTrigger>
-              <TabsTrigger value="equipment">Equipment</TabsTrigger>
-              <TabsTrigger value="alerts">Alerts</TabsTrigger>
-              <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
+    <ErrorBoundary>
+      <AccessibilityWrapper role="main" aria-label="ASRS Control Center">
+        <div className="min-h-screen bg-background">
+          {/* Navigation Tabs */}
+          <div className="glass-effect border-b border-neonBlue/30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
+                <TabsList className="grid w-full grid-cols-6 glass-effect" role="tablist" aria-label="Main navigation">
+                  <TabsTrigger value="dashboard" aria-controls="dashboard-panel">Dashboard</TabsTrigger>
+                  <TabsTrigger value="sensors" aria-controls="sensors-panel">Sensors</TabsTrigger>
+                  <TabsTrigger value="equipment" aria-controls="equipment-panel">Equipment</TabsTrigger>
+                  <TabsTrigger value="alerts" aria-controls="alerts-panel">Alerts</TabsTrigger>
+                  <TabsTrigger value="maintenance" aria-controls="maintenance-panel">Maintenance</TabsTrigger>
+                  <TabsTrigger value="reports" aria-controls="reports-panel">Reports</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
-          <TabsContent value="dashboard" className="mt-0">
-            {renderDashboard()}
-          </TabsContent>
-          <TabsContent value="sensors" className="mt-0">
-            {renderSensors()}
-          </TabsContent>
-          <TabsContent value="equipment" className="mt-0">
-            {renderEquipment()}
-          </TabsContent>
-          <TabsContent value="alerts" className="mt-0">
-            {renderAlerts()}
-          </TabsContent>
-          <TabsContent value="maintenance" className="mt-0">
-            {renderMaintenance()}
-          </TabsContent>
-          <TabsContent value="reports" className="mt-0">
-            {renderReports()}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+          {/* Main Content */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Tabs value={activeModule} onValueChange={setActiveModule} className="w-full">
+              <TabsContent value="dashboard" className="mt-0" id="dashboard-panel" role="tabpanel" aria-labelledby="dashboard-tab">
+                {renderDashboard()}
+              </TabsContent>
+              <TabsContent value="sensors" className="mt-0" id="sensors-panel" role="tabpanel" aria-labelledby="sensors-tab">
+                {renderSensors()}
+              </TabsContent>
+              <TabsContent value="equipment" className="mt-0" id="equipment-panel" role="tabpanel" aria-labelledby="equipment-tab">
+                {renderEquipment()}
+              </TabsContent>
+              <TabsContent value="alerts" className="mt-0" id="alerts-panel" role="tabpanel" aria-labelledby="alerts-tab">
+                {renderAlerts()}
+              </TabsContent>
+              <TabsContent value="maintenance" className="mt-0" id="maintenance-panel" role="tabpanel" aria-labelledby="maintenance-tab">
+                {renderMaintenance()}
+              </TabsContent>
+              <TabsContent value="reports" className="mt-0" id="reports-panel" role="tabpanel" aria-labelledby="reports-tab">
+                {renderReports()}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </AccessibilityWrapper>
+    </ErrorBoundary>
   );
 }

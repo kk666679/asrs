@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useMaintenance } from '@/lib/hooks/useMaintenance';
 import {
   Wrench,
   Clock,
@@ -24,6 +25,7 @@ import {
   Filter
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface MaintenanceTask {
   id: string;
@@ -66,139 +68,63 @@ const typeLabels = {
 };
 
 export default function MaintenancePage() {
-  const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterType, setFilterType] = useState('all');
-  const [filterPriority, setFilterPriority] = useState('all');
-  const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
-  const [newTask, setNewTask] = useState<Partial<MaintenanceTask>>({
+  const {
+    maintenance: tasks,
+    filteredMaintenance: filteredTasks,
+    maintenanceStats: taskStats,
+    isLoading,
+    error,
+    filters,
+    setFilters,
+    clearFilters,
+    createMaintenance: createTask,
+    updateMaintenance: updateTask,
+    refreshMaintenance: refreshTasks
+  } = useMaintenance();
+  
+  const [selectedTask, setSelectedTask] = React.useState<any>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
+  const [newTask, setNewTask] = React.useState<any>({
     type: 'preventive',
     priority: 'medium',
     status: 'scheduled',
     estimatedHours: 1
   });
-  const [scheduledDate, setScheduledDate] = useState<Date>();
+  const [scheduledDate, setScheduledDate] = React.useState<Date>();
 
-  useEffect(() => {
-    fetchMaintenanceTasks();
-    const interval = setInterval(fetchMaintenanceTasks, 60000); // Refresh every minute
-    return () => clearInterval(interval);
-  }, [filterStatus, filterType, filterPriority]);
 
-  const fetchMaintenanceTasks = async () => {
-    try {
-      // Mock API call - in real implementation, this would fetch from /api/maintenance
-      const mockTasks: MaintenanceTask[] = [
-        {
-          id: '1',
-          title: 'Conveyor System A - Preventive Maintenance',
-          description: 'Monthly inspection and lubrication of conveyor belts and rollers',
-          equipment: 'Conveyor A',
-          type: 'preventive',
-          priority: 'medium',
-          status: 'scheduled',
-          scheduledDate: '2024-02-15T09:00:00Z',
-          estimatedHours: 2,
-          zone: 'Loading Bay'
-        },
-        {
-          id: '2',
-          title: 'Shuttle #3 - Motor Inspection',
-          description: 'Inspect motor bearings and check vibration levels',
-          equipment: 'Shuttle #3',
-          type: 'corrective',
-          priority: 'high',
-          status: 'in_progress',
-          scheduledDate: '2024-02-10T14:00:00Z',
-          estimatedHours: 1.5,
-          technician: 'John Smith',
-          zone: 'Aisle 7'
-        },
-        {
-          id: '3',
-          title: 'VLM #1 - Emergency Repair',
-          description: 'Replace faulty lift mechanism motor',
-          equipment: 'VLM #1',
-          type: 'emergency',
-          priority: 'critical',
-          status: 'completed',
-          scheduledDate: '2024-02-08T16:00:00Z',
-          completedDate: '2024-02-08T18:30:00Z',
-          technician: 'Sarah Johnson',
-          estimatedHours: 3,
-          actualHours: 2.5,
-          cost: 450,
-          zone: 'Zone A'
-        },
-        {
-          id: '4',
-          title: 'Temperature Sensor Calibration',
-          description: 'Calibrate all temperature sensors across zones',
-          equipment: 'All Temp Sensors',
-          type: 'preventive',
-          priority: 'low',
-          status: 'overdue',
-          scheduledDate: '2024-02-05T10:00:00Z',
-          estimatedHours: 4,
-          zone: 'All Zones'
-        }
-      ];
-
-      setTasks(mockTasks);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load maintenance tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
-      // Mock API call
-      console.log(`Updating task ${taskId} status to ${status}`);
-
-      // Update local state
-      setTasks(prev => prev.map(task =>
-        task.id === taskId ? {
-          ...task,
-          status: status as MaintenanceTask['status'],
-          completedDate: status === 'completed' ? new Date().toISOString() : task.completedDate
-        } : task
-      ));
+      await updateTask(taskId, {
+        status: status.toUpperCase() as any,
+        completedDate: status === 'COMPLETED' ? new Date().toISOString() : undefined
+      });
     } catch (err) {
-      setError('Failed to update task status');
+      console.error('Failed to update task status:', err);
     }
   };
 
   const createNewTask = async () => {
     try {
       if (!newTask.title || !newTask.equipment || !scheduledDate) {
-        setError('Please fill in all required fields');
+        console.error('Please fill in all required fields');
         return;
       }
 
-      const task: MaintenanceTask = {
-        id: Date.now().toString(),
-        title: newTask.title,
+      const task = {
+        type: (newTask.type?.toUpperCase() || 'PREVENTIVE') as any,
+        priority: (newTask.priority?.toUpperCase() || 'MEDIUM') as any,
+        status: 'SCHEDULED' as any,
         description: newTask.description || '',
-        equipment: newTask.equipment,
-        type: newTask.type as MaintenanceTask['type'],
-        priority: newTask.priority as MaintenanceTask['priority'],
-        status: 'scheduled',
         scheduledDate: scheduledDate.toISOString(),
-        estimatedHours: newTask.estimatedHours || 1,
-        zone: newTask.zone
+        estimatedDuration: newTask.estimatedHours || 1,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
-      // Mock API call
-      console.log('Creating new maintenance task:', task);
-
-      // Update local state
-      setTasks(prev => [task, ...prev]);
+      await createTask(task);
       setIsNewTaskDialogOpen(false);
       setNewTask({
         type: 'preventive',
@@ -208,24 +134,11 @@ export default function MaintenancePage() {
       });
       setScheduledDate(undefined);
     } catch (err) {
-      setError('Failed to create maintenance task');
+      console.error('Failed to create maintenance task:', err);
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
-    if (filterStatus !== 'all' && task.status !== filterStatus) return false;
-    if (filterType !== 'all' && task.type !== filterType) return false;
-    if (filterPriority !== 'all' && task.priority !== filterPriority) return false;
-    return true;
-  });
 
-  const taskStats = {
-    total: tasks.length,
-    scheduled: tasks.filter(t => t.status === 'scheduled').length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    overdue: tasks.filter(t => t.status === 'overdue').length,
-  };
 
   const getPriorityBadge = (priority: string) => {
     return (
@@ -243,7 +156,7 @@ export default function MaintenancePage() {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Loading maintenance tasks...</div>
@@ -278,7 +191,7 @@ export default function MaintenancePage() {
                 <Input
                   id="title"
                   value={newTask.title || ''}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => setNewTask((prev: any) => ({ ...prev, title: e.target.value }))}
                   placeholder="Enter task title"
                 />
               </div>
@@ -287,7 +200,7 @@ export default function MaintenancePage() {
                 <Input
                   id="equipment"
                   value={newTask.equipment || ''}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, equipment: e.target.value }))}
+                  onChange={(e) => setNewTask((prev: any) => ({ ...prev, equipment: e.target.value }))}
                   placeholder="e.g., Conveyor A"
                 />
               </div>
@@ -296,13 +209,13 @@ export default function MaintenancePage() {
                 <Input
                   id="zone"
                   value={newTask.zone || ''}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, zone: e.target.value }))}
+                  onChange={(e) => setNewTask((prev: any) => ({ ...prev, zone: e.target.value }))}
                   placeholder="e.g., Loading Bay"
                 />
               </div>
               <div>
                 <Label htmlFor="type">Maintenance Type</Label>
-                <Select value={newTask.type} onValueChange={(value) => setNewTask(prev => ({ ...prev, type: value as MaintenanceTask['type'] }))}>
+                <Select value={newTask.type} onValueChange={(value) => setNewTask((prev: any) => ({ ...prev, type: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -316,7 +229,7 @@ export default function MaintenancePage() {
               </div>
               <div>
                 <Label htmlFor="priority">Priority</Label>
-                <Select value={newTask.priority} onValueChange={(value) => setNewTask(prev => ({ ...prev, priority: value as MaintenanceTask['priority'] }))}>
+                <Select value={newTask.priority} onValueChange={(value) => setNewTask((prev: any) => ({ ...prev, priority: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -354,7 +267,7 @@ export default function MaintenancePage() {
                   type="number"
                   step="0.5"
                   value={newTask.estimatedHours || ''}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, estimatedHours: parseFloat(e.target.value) }))}
+                  onChange={(e) => setNewTask((prev: any) => ({ ...prev, estimatedHours: parseFloat(e.target.value) }))}
                 />
               </div>
               <div className="col-span-2">
@@ -362,7 +275,7 @@ export default function MaintenancePage() {
                 <Textarea
                   id="description"
                   value={newTask.description || ''}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => setNewTask((prev: any) => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter task description"
                 />
               </div>
@@ -461,7 +374,7 @@ export default function MaintenancePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filters.status || 'all'} onValueChange={(value) => setFilters({...filters, status: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -477,7 +390,7 @@ export default function MaintenancePage() {
             </div>
             <div>
               <Label htmlFor="type">Maintenance Type</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <Select value={filters.type || 'all'} onValueChange={(value) => setFilters({...filters, type: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -492,7 +405,7 @@ export default function MaintenancePage() {
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <Select value={filters.priority || 'all'} onValueChange={(value) => setFilters({...filters, priority: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Priorities" />
                 </SelectTrigger>
@@ -506,13 +419,69 @@ export default function MaintenancePage() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={fetchMaintenanceTasks} className="w-full">
+              <Button onClick={refreshTasks} className="w-full">
                 Refresh
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks by Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={[
+                { name: 'Scheduled', value: taskStats.scheduled },
+                { name: 'In Progress', value: taskStats.inProgress },
+                { name: 'Completed', value: taskStats.completed },
+                { name: 'Overdue', value: taskStats.overdue },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks by Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Preventive', value: tasks.filter(t => t.type === 'PREVENTIVE').length },
+                    { name: 'Corrective', value: tasks.filter(t => t.type === 'CORRECTIVE').length },
+                    { name: 'Predictive', value: tasks.filter(t => t.type === 'PREDICTIVE').length },
+                    { name: 'Inspection', value: tasks.filter(t => t.type === 'INSPECTION').length },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {[0, 1, 2, 3].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#0088FE', '#00C49F', '#FFBB28', '#FF8042'][index]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Maintenance Tasks */}
       <Card>
@@ -525,15 +494,15 @@ export default function MaintenancePage() {
             <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-medium">{task.title}</h3>
+                  <h3 className="font-medium">{task.description}</h3>
                   {getPriorityBadge(task.priority)}
                   {getStatusBadge(task.status)}
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+                <p className="text-sm text-muted-foreground mb-2">Maintenance Task</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Wrench className="h-3 w-3" />
-                    {task.equipment}
+                    Equipment ID: {task.equipmentId || 'N/A'}
                   </div>
                   <div className="flex items-center gap-1">
                     <CalendarIcon className="h-3 w-3" />
@@ -541,7 +510,7 @@ export default function MaintenancePage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {task.estimatedHours}h estimated
+                    {task.estimatedDuration}h estimated
                   </div>
                   {task.technician && (
                     <div className="flex items-center gap-1">
@@ -549,29 +518,24 @@ export default function MaintenancePage() {
                       {task.technician}
                     </div>
                   )}
-                  {task.zone && (
-                    <div className="flex items-center gap-1">
-                      <Settings className="h-3 w-3" />
-                      {task.zone}
-                    </div>
-                  )}
+
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {task.status === 'scheduled' && (
+                {task.status === 'SCHEDULED' && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                    onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}
                   >
                     Start Task
                   </Button>
                 )}
-                {task.status === 'in_progress' && (
+                {task.status === 'IN_PROGRESS' && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateTaskStatus(task.id, 'completed')}
+                    onClick={() => updateTaskStatus(task.id, 'COMPLETED')}
                   >
                     Complete Task
                   </Button>
@@ -588,7 +552,7 @@ export default function MaintenancePage() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>{task.title}</DialogTitle>
+                      <DialogTitle>{task.description}</DialogTitle>
                       <DialogDescription>
                         View detailed information about this maintenance task
                       </DialogDescription>
@@ -596,16 +560,16 @@ export default function MaintenancePage() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Equipment</Label>
-                          <div className="text-sm">{task.equipment}</div>
+                          <Label>Equipment ID</Label>
+                          <div className="text-sm">{task.equipmentId || 'N/A'}</div>
                         </div>
                         <div>
-                          <Label>Zone</Label>
-                          <div className="text-sm">{task.zone || 'N/A'}</div>
+                          <Label>Robot ID</Label>
+                          <div className="text-sm">{task.robotId || 'N/A'}</div>
                         </div>
                         <div>
                           <Label>Type</Label>
-                          <div className="text-sm">{typeLabels[task.type]}</div>
+                          <div className="text-sm">{task.type}</div>
                         </div>
                         <div>
                           <Label>Priority</Label>
@@ -620,13 +584,13 @@ export default function MaintenancePage() {
                           <div className="text-sm">{new Date(task.scheduledDate).toLocaleString()}</div>
                         </div>
                         <div>
-                          <Label>Estimated Hours</Label>
-                          <div className="text-sm">{task.estimatedHours}h</div>
+                          <Label>Estimated Duration</Label>
+                          <div className="text-sm">{task.estimatedDuration}h</div>
                         </div>
-                        {task.actualHours && (
+                        {task.actualDuration && (
                           <div>
-                            <Label>Actual Hours</Label>
-                            <div className="text-sm">{task.actualHours}h</div>
+                            <Label>Actual Duration</Label>
+                            <div className="text-sm">{task.actualDuration}h</div>
                           </div>
                         )}
                         {task.technician && (

@@ -4,20 +4,20 @@ export enum HalalStatus {
   PENDING = 'PENDING',
   NON_HALAL = 'NON_HALAL',
   EXPIRED = 'EXPIRED',
-  QUARANTINE = 'QUARANTINE'
+  QUARANTINE = 'QUARANTINE',
 }
 
 export enum StorageZoneType {
   HALAL = 'HALAL',
   NON_HALAL = 'NON_HALAL',
-  QUARANTINE = 'QUARANTINE'
+  QUARANTINE = 'QUARANTINE',
 }
 
 export enum CertificationStatus {
   VERIFIED = 'VERIFIED',
   PENDING = 'PENDING',
   EXPIRED = 'EXPIRED',
-  INVALID = 'INVALID'
+  INVALID = 'INVALID',
 }
 
 export interface HalalProduct {
@@ -74,7 +74,11 @@ export interface HalalStats {
 
 export interface ComplianceAlert {
   id: string;
-  type: 'CERTIFICATION_EXPIRY' | 'CONTAMINATION_RISK' | 'ZONE_VIOLATION' | 'TEMPERATURE_BREACH';
+  type:
+    | 'CERTIFICATION_EXPIRY'
+    | 'CONTAMINATION_RISK'
+    | 'ZONE_VIOLATION'
+    | 'TEMPERATURE_BREACH';
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   message: string;
   productId?: string;

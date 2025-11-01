@@ -2,6 +2,7 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 
 import {
   Collapsible,
@@ -56,13 +57,13 @@ export function NavMain({
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton tooltip={item.title} isActive={isActive} asChild>
-                    <a href={item.url}>
+                    <Link href={item.url} className="flex items-center gap-2 w-full">
                       {item.icon && <item.icon />}
-                      <span>{item.title}</span>
+                      {item.title}
                       {item.items && (
                         <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       )}
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 {item.items && (
@@ -82,20 +83,18 @@ export function NavMain({
                               >
                                 <div>
                                   <CollapsibleTrigger asChild>
-                                    <SidebarMenuSubButton asChild>
-                                      <div className="flex items-center justify-between w-full">
-                                        <span>{subItem.title}</span>
-                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/nested-collapsible:rotate-90" />
-                                      </div>
+                                    <SidebarMenuSubButton>
+                                      <span>{subItem.title}</span>
+                                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/nested-collapsible:rotate-90" />
                                     </SidebarMenuSubButton>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent>
                                     <div className="ml-4 mt-1 space-y-1">
                                       {subItem.items.map((nestedItem) => (
-                                        <SidebarMenuSubButton key={nestedItem.title} asChild isActive={pathname === nestedItem.url}>
-                                          <a href={nestedItem.url}>
-                                            <span>{nestedItem.title}</span>
-                                          </a>
+                                        <SidebarMenuSubButton key={nestedItem.title} isActive={pathname === nestedItem.url} asChild>
+                                          <Link href={nestedItem.url}>
+                                            {nestedItem.title}
+                                          </Link>
                                         </SidebarMenuSubButton>
                                       ))}
                                     </div>
@@ -103,10 +102,10 @@ export function NavMain({
                                 </div>
                               </Collapsible>
                             ) : (
-                              <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                                <a href={subItem.url}>
-                                  <span>{subItem.title}</span>
-                                </a>
+                              <SidebarMenuSubButton isActive={pathname === subItem.url} asChild>
+                                <Link href={subItem.url}>
+                                  {subItem.title}
+                                </Link>
                               </SidebarMenuSubButton>
                             )}
                           </SidebarMenuSubItem>
