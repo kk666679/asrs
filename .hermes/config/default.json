@@ -1,0 +1,4 @@
+{
+  "redis": { "url": "redis://localhost:6379" },
+  "postgres": { "connectionString": "postgresql://asrs:asrs123@localhost:5432/asrs_db" }
+}
