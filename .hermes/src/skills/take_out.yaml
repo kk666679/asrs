@@ -1,0 +1,17 @@
+name: take_out
+description: Retrieve item from storage zone and deliver to output station
+version: "2.0"
+timeout_ms: 30000
+retry:
+  attempts: 3
+  backoff: exponential
+steps:
+  - agent: path-planner
+    input: "{{ from_sku }}"
+    output: path
+  - agent: device-controller
+    depends_on: path-planner
+    input: "{{ path }}"
+  - agent: inventory-manager
+    depends_on: device-controller
+    updates: quantity
