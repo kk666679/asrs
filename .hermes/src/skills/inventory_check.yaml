@@ -1,0 +1,13 @@
+name: inventory_check
+description: Verify stock levels and run quality inspection on sampled items
+version: "2.0"
+timeout_ms: 20000
+retry:
+  attempts: 2
+  backoff: fixed
+steps:
+  - agent: inventory-manager
+    action: check
+  - agent: quality-inspector
+    depends_on: inventory-manager
+    sample_rate: 0.1
