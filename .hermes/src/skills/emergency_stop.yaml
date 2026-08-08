@@ -1,0 +1,13 @@
+name: emergency_stop
+description: Immediately halt all AGV movement and broadcast alert to all gateways
+version: "1.0"
+timeout_ms: 5000
+priority: 10
+retry:
+  attempts: 1
+steps:
+  - agent: device-controller
+    action: stop_all
+  - agent: exception-handler
+    action: broadcast_alert
+    parallel: true
