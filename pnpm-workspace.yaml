@@ -1,0 +1,14 @@
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  pkcs11js: true
+  prisma: true
+  protobufjs: true
+minimumReleaseAgeExclude:
+  - '@ai-sdk/gateway@4.0.45'
+  - '@ai-sdk/provider-utils@5.0.24'
+  - '@rive-app/react-webgl2@4.31.0'
+  - '@types/node@26.2.0'
+  - ai@7.0.57
+  - lucide-react@1.30.0
+  - tsx@4.23.11
