@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-asrs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-asrs_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-asrs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hermes:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-asrs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asrs_db}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: ${NODE_ENV:-production}
+      HERMES_ALLOWED_HOSTS: redis,postgres,localhost,127.0.0.1
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg_data:
