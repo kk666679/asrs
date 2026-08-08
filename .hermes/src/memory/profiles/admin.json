@@ -1,0 +1,5 @@
+{
+  "user": "admin",
+  "preferred_zones": ["A", "B"],
+  "default_agv": "MiR250-01"
+}
