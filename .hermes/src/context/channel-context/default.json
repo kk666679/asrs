@@ -1,0 +1,7 @@
+{
+  "discord": { "prefix": "!", "response_style": "formal" },
+  "telegram": { "prefix": "/", "response_style": "concise" },
+  "slack": { "prefix": "!", "response_style": "professional" },
+  "whatsapp": { "prefix": "", "response_style": "friendly" },
+  "email": { "subject_prefix": "[Hermes ASRS]", "response_style": "detailed" }
+}
