@@ -1,0 +1,7 @@
+{
+  "providers": {
+    "openai": { "api_key_env": "OPENAI_API_KEY", "default_model": "gpt-4o" },
+    "anthropic": { "api_key_env": "ANTHROPIC_API_KEY", "default_model": "claude-3-opus" },
+    "local": { "endpoint": "http://localhost:11434", "model": "llama2" }
+  }
+}
